@@ -85,7 +85,7 @@
 
 处理顺序固定：HTTP 请求 → 解析 → 格式校验 → 构造规范化 `CreateBookingCommand` → 计算 SHA-256 `requestHash` → 幂等领取、业务校验和持久化。格式层失败（JSON、未知/缺失字段、类型或日期格式、Key）直接 4xx，不持久化 FAILED。
 
-规范化命令只含 `roomId,subject,startTime,endTime,attendeeCount,participantsText,description`：可选缺失为 null，`subject` 去首尾空白，其余文本保持提交值，时间重格式化为固定 LocalDateTime 文本；键名字典序、UTF-8、无额外空白 JSON 计算 Hash。该同一命令必须用于哈希、业务校验和入库，尤其去空白后的 subject 必须写入 booking。
+规范化命令只含 `roomId,subject,startTime,endTime,attendeeCount,participantsText,description`：可选缺失为 null；`subject` 非 null 时以 Java `String.strip()` 去首尾 Unicode 空白，`participantsText` 与 `description` 同样 `strip()` 且结果为空时规范化为 null，三者内部空格和换行保持不变；时间重格式化为固定 LocalDateTime 文本。键名字典序、UTF-8、无额外空白 JSON 计算 Hash。该同一命令必须用于哈希、业务校验和入库，不得重新读取原始 DTO。
 
 短事务先提交 `(CREATE_BOOKING,CurrentUser.id,key)` 的 PROCESSING；业务事务 `SELECT ... FOR UPDATE` 锁定它，写 booking、全部 booking_slot、审计并写 SUCCEEDED 及稳定首次响应；确定性业务失败回滚后以独立短事务写 FAILED；基础设施异常保留 PROCESSING，由恢复任务在取得行锁后终结。`response_body` 只保存稳定业务内容、状态码、失败码/bookingId，不保存 requestId、displayStatus 或当前时间。
 

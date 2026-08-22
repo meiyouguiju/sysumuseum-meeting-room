@@ -12,6 +12,20 @@ public record CreateBookingCommand(
         String description) {
 
     public CreateBookingCommand {
-        subject = subject == null ? null : subject.trim();
+        subject = normalizeRequiredText(subject);
+        participantsText = normalizeOptionalText(participantsText);
+        description = normalizeOptionalText(description);
+    }
+
+    private static String normalizeRequiredText(String value) {
+        return value == null ? null : value.strip();
+    }
+
+    private static String normalizeOptionalText(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.strip();
+        return normalized.isEmpty() ? null : normalized;
     }
 }

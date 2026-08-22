@@ -81,8 +81,22 @@ class BookingServiceIntegrationTest {
                 .isEqualTo(1);
         assertThat(jdbcTemplate.queryForObject("SELECT before_json IS NULL FROM booking_audit_log WHERE booking_id = ?", Boolean.class, result.id()))
                 .isTrue();
+        assertThat(jdbcTemplate.queryForObject("SELECT actor_user_id FROM booking_audit_log WHERE booking_id = ?", Long.class, result.id()))
+                .isEqualTo(940001L);
+        assertThat(jdbcTemplate.queryForObject("SELECT actor_role_snapshot FROM booking_audit_log WHERE booking_id = ?", String.class, result.id()))
+                .isEqualTo("USER");
+        assertThat(jdbcTemplate.queryForObject("SELECT target_owner_user_id FROM booking_audit_log WHERE booking_id = ?", Long.class, result.id()))
+                .isEqualTo(940001L);
+        assertThat(jdbcTemplate.queryForObject("SELECT version_before IS NULL FROM booking_audit_log WHERE booking_id = ?", Boolean.class, result.id()))
+                .isTrue();
+        assertThat(jdbcTemplate.queryForObject("SELECT version_after FROM booking_audit_log WHERE booking_id = ?", Integer.class, result.id()))
+                .isEqualTo(1);
         assertThat(jdbcTemplate.queryForObject("SELECT after_json->>'$.participantsText' FROM booking_audit_log WHERE booking_id = ?", String.class, result.id()))
                 .isEqualTo("参会人员");
+        assertThat(jdbcTemplate.queryForObject("SELECT JSON_LENGTH(slot_change_json) FROM booking_audit_log WHERE booking_id = ?", Integer.class, result.id()))
+                .isEqualTo(3);
+        assertThat(jdbcTemplate.queryForObject("SELECT occurred_at FROM booking_audit_log WHERE booking_id = ?", LocalDateTime.class, result.id()))
+                .isEqualTo(NOW);
     }
 
     @Test
@@ -121,9 +135,18 @@ class BookingServiceIntegrationTest {
         bookingService.create(command("首个", at(11, 0), at(12, 0), 1));
 
         assertError(command("冲突", at(11, 30), at(12, 30), 1), "BOOKING_SLOT_CONFLICT");
+        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM booking_slot WHERE room_id = ?", Integer.class, ENABLED_ROOM_ID)).isEqualTo(2);
         assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM booking WHERE subject = '冲突'", Integer.class)).isZero();
+        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM booking_slot WHERE booking_id IN (SELECT id FROM booking WHERE subject = '冲突')", Integer.class)).isZero();
         assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM booking_audit_log WHERE after_json->>'$.subject' = '冲突'", Integer.class)).isZero();
         assertThat(bookingService.create(commandWithRoom(OTHER_ENABLED_ROOM_ID, at(11, 30), at(12, 30))).id()).isNotNull();
+    }
+
+    @Test
+    void rejectsDisabledCurrentUser() {
+        jdbcTemplate.update("UPDATE sys_user SET status = 'DISABLED' WHERE id = ?", 940001L);
+
+        assertError(command("停用用户", at(11, 0), at(11, 30), 1), "UNAUTHENTICATED");
     }
 
     private void assertError(CreateBookingCommand command, String errorCode) {
