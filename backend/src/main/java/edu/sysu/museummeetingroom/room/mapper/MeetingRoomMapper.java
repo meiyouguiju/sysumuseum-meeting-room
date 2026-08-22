@@ -6,9 +6,17 @@ import org.apache.ibatis.annotations.Select;
 
 @Mapper
 public interface MeetingRoomMapper {
+
     @Select("""
             SELECT id, name, location, capacity, facilities_text, usage_notice, status, sort_order
             FROM meeting_room ORDER BY sort_order ASC, id ASC
             """)
     List<RoomRow> findAllOrdered();
+
+    @Select("""
+            SELECT id, name, location, capacity, facilities_text, usage_notice, status, sort_order
+            FROM meeting_room
+            WHERE id = #{roomId}
+            """)
+    RoomRow findById(long roomId);
 }
