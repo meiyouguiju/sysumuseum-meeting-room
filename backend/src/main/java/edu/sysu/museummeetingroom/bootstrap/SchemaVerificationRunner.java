@@ -1,12 +1,14 @@
 package edu.sysu.museummeetingroom.bootstrap;
 
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class SchemaVerificationRunner implements ApplicationRunner {
 
     private static final List<String> REQUIRED_TABLES = List.of(
@@ -19,10 +21,6 @@ public class SchemaVerificationRunner implements ApplicationRunner {
             "flyway_schema_history");
 
     private final JdbcTemplate jdbcTemplate;
-
-    public SchemaVerificationRunner(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
-    }
 
     @Override
     public void run(ApplicationArguments args) {

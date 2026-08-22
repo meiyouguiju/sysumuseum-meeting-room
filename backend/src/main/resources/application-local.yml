@@ -7,3 +7,6 @@ logging:
   level:
     org.flywaydb: INFO
     org.springframework.jdbc: INFO
+
+local:
+  current-user-id: ${LOCAL_USER_ID:1}
