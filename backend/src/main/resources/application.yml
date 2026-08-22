@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: museum-meeting-room-backend
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:museum_meeting_room}?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_0900_ai_ci&connectionTimeZone=Asia/Shanghai&forceConnectionTimeZoneToSession=false
+    username: ${DB_USERNAME:dev}
+    password: ${DB_PASSWORD:}
+    hikari:
+      connection-init-sql: SET time_zone = '+08:00'
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+  jackson:
+    time-zone: Asia/Shanghai
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true

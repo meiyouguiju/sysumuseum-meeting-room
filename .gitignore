@@ -1,0 +1,21 @@
+# Build output
+target/
+**/target/
+
+# IDE files
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+
+# Local secrets and overrides
+.env
+.env.*
+!*.example
+application-local-secret.yml
+application-local-secret.yaml
+
+# Logs
+*.log
+logs/
