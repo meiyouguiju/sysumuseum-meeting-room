@@ -32,3 +32,16 @@ management:
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
+
+maintenance:
+  scheduling:
+    enabled: true
+  slot-cleanup:
+    cron: "0 2,32 * * * *"
+    batch-size: 500
+  idempotency:
+    processing-recovery-cron: "0 * * * * *"
+    processing-recovery-threshold: PT2M
+    processing-recovery-batch-size: 100
+    cleanup-cron: "0 17 * * * *"
+    cleanup-batch-size: 500

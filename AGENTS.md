@@ -37,5 +37,6 @@
 # Testing and handoff
 
 - 正常开发和开发者本机验证必须优先运行 `.\mvnw.cmd test`；Codex 也应优先尝试 Maven Wrapper。失败必须先修复，不得作为完成状态。
+- 完整集成测试以 Maven `test` 为准；Maven Surefire 仅在测试 JVM 中设置 `maintenance.scheduling.enabled=false`，避免真实 cron 任务执行。
 - 若 Codex 自身执行环境无法启动 `mvnw.cmd`，不得擅自修改或重写 Wrapper；先记录并报告其 stdout、stderr 和 exit code。确需继续验证时，可临时调用该 Wrapper 已下载的同版本 Maven。此 fallback 仅处理 Codex 环境兼容性，不改变项目标准命令；开发者本机能正常执行 Wrapper 时，不得误判 Wrapper 损坏。
 - 完成汇报须说明修改文件、测试结果、是否修改数据库、是否改变既有 REST 契约。
