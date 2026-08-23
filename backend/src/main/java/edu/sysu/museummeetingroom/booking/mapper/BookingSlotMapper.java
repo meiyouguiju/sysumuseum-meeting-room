@@ -4,6 +4,7 @@ import java.util.List;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Delete;
 
 @Mapper
 public interface BookingSlotMapper {
@@ -18,4 +19,7 @@ public interface BookingSlotMapper {
             </script>
             """)
     int insertBatch(@Param("slots") List<BookingSlotEntity> slots);
+
+    @Delete("DELETE FROM booking_slot WHERE booking_id = #{bookingId}")
+    int deleteByBookingId(@Param("bookingId") long bookingId);
 }

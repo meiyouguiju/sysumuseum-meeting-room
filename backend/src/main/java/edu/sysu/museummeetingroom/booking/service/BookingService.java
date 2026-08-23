@@ -16,10 +16,7 @@ import edu.sysu.museummeetingroom.common.exception.ApiException;
 import edu.sysu.museummeetingroom.room.mapper.MeetingRoomMapper;
 import edu.sysu.museummeetingroom.room.mapper.RoomRow;
 import java.time.Clock;
-import java.time.Duration;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -32,8 +29,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class BookingService {
 
-    private static final int SLOT_MINUTES = 30;
-    private static final Duration MAXIMUM_DURATION = Duration.ofHours(5);
     private static final String ROOM_CAPACITY_EXCEEDED = "ROOM_CAPACITY_EXCEEDED";
 
     private final CurrentUserProvider currentUserProvider;
@@ -41,6 +36,8 @@ public class BookingService {
     private final BookingMapper bookingMapper;
     private final BookingSlotMapper bookingSlotMapper;
     private final BookingAuditLogMapper bookingAuditLogMapper;
+    private final BookingSlotGenerator bookingSlotGenerator;
+    private final BookingTimeRuleValidator bookingTimeRuleValidator;
     private final ObjectMapper objectMapper;
     private final Clock businessClock;
 
@@ -49,12 +46,13 @@ public class BookingService {
         CurrentUser currentUser = requireActiveCurrentUser();
         RoomRow room = requireEnabledRoom(command.roomId());
         LocalDateTime now = LocalDateTime.now(businessClock);
-        validateTime(command, now);
+        bookingTimeRuleValidator.validate(command, now);
 
         BookingEntity booking = createBookingEntity(command, currentUser, now);
         bookingMapper.insert(booking);
 
-        List<BookingSlotEntity> slots = createSlots(booking.getId(), command.roomId(), command.startTime(), command.endTime());
+        List<BookingSlotEntity> slots = bookingSlotGenerator.generate(
+                booking.getId(), command.roomId(), command.startTime(), command.endTime());
         insertSlots(slots);
         writeCreateAudit(booking, currentUser, slots, now);
 
@@ -80,32 +78,6 @@ public class BookingService {
         return room;
     }
 
-    private void validateTime(CreateBookingCommand command, LocalDateTime now) {
-        LocalDateTime startTime = command.startTime();
-        LocalDateTime endTime = command.endTime();
-        if (startTime == null || endTime == null || !startTime.isBefore(endTime) || !isSlotBoundary(startTime) || !isSlotBoundary(endTime) || !startTime.isAfter(now)) {
-            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "BOOKING_TIME_INVALID", "预约时间不符合规则。");
-        }
-        if (!startTime.toLocalDate().equals(endTime.toLocalDate())) {
-            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "BOOKING_CROSS_DAY_NOT_ALLOWED", "预约不能跨自然日。");
-        }
-        LocalDate today = now.toLocalDate();
-        if (startTime.toLocalDate().isAfter(today.plusDays(13))) {
-            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "BOOKING_WINDOW_EXCEEDED", "预约超出未来14天范围。");
-        }
-        Duration duration = Duration.between(startTime, endTime);
-        if (duration.compareTo(Duration.ofMinutes(SLOT_MINUTES)) < 0) {
-            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "BOOKING_TIME_INVALID", "预约时长至少为30分钟。");
-        }
-        if (duration.compareTo(MAXIMUM_DURATION) > 0) {
-            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "BOOKING_DURATION_EXCEEDED", "单次预约不能超过5小时。");
-        }
-    }
-
-    private boolean isSlotBoundary(LocalDateTime time) {
-        return time.getMinute() % SLOT_MINUTES == 0 && time.getSecond() == 0 && time.getNano() == 0;
-    }
-
     private BookingEntity createBookingEntity(CreateBookingCommand command, CurrentUser currentUser, LocalDateTime now) {
         BookingEntity booking = new BookingEntity();
         booking.setBookingNo(UUID.randomUUID().toString().replace("-", ""));
@@ -121,14 +93,6 @@ public class BookingService {
         booking.setLastModifiedByUserId(currentUser.userId());
         booking.setOccurredAt(now);
         return booking;
-    }
-
-    private List<BookingSlotEntity> createSlots(Long bookingId, Long roomId, LocalDateTime startTime, LocalDateTime endTime) {
-        List<BookingSlotEntity> slots = new ArrayList<>();
-        for (LocalDateTime slotStart = startTime; slotStart.isBefore(endTime); slotStart = slotStart.plusMinutes(SLOT_MINUTES)) {
-            slots.add(new BookingSlotEntity(bookingId, roomId, slotStart));
-        }
-        return slots;
     }
 
     private void insertSlots(List<BookingSlotEntity> slots) {

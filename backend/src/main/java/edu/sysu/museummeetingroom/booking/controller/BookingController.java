@@ -2,6 +2,7 @@ package edu.sysu.museummeetingroom.booking.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import edu.sysu.museummeetingroom.booking.command.CreateBookingCommand;
+import edu.sysu.museummeetingroom.booking.command.UpdateBookingCommand;
 import edu.sysu.museummeetingroom.booking.idempotency.CreateBookingCoordinationResult;
 import edu.sysu.museummeetingroom.booking.idempotency.CreateBookingCoordinator;
 import edu.sysu.museummeetingroom.booking.idempotency.IdempotencyKeyValidator;
@@ -9,6 +10,9 @@ import edu.sysu.museummeetingroom.booking.idempotency.IdempotencyResult;
 import edu.sysu.museummeetingroom.booking.idempotency.IdempotencyResultService;
 import edu.sysu.museummeetingroom.booking.web.CreateBookingRequest;
 import edu.sysu.museummeetingroom.booking.web.IdempotencyResultResponse;
+import edu.sysu.museummeetingroom.booking.web.UpdateBookingRequest;
+import edu.sysu.museummeetingroom.booking.mutation.service.BookingUpdateService;
+import edu.sysu.museummeetingroom.booking.query.dto.BookingDetailResponse;
 import edu.sysu.museummeetingroom.common.api.ApiErrorResponse;
 import edu.sysu.museummeetingroom.common.web.RequestIdFilter;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,6 +23,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -32,6 +38,7 @@ public class BookingController {
     private final IdempotencyKeyValidator idempotencyKeyValidator;
     private final CreateBookingCoordinator createBookingCoordinator;
     private final IdempotencyResultService idempotencyResultService;
+    private final BookingUpdateService bookingUpdateService;
 
     @PostMapping
     public ResponseEntity<?> create(
@@ -58,6 +65,13 @@ public class BookingController {
                 result.response()));
     }
 
+    @PatchMapping("/{bookingId}")
+    public BookingDetailResponse update(
+            @PathVariable long bookingId,
+            @Valid @RequestBody UpdateBookingRequest request) {
+        return bookingUpdateService.update(bookingId, toCommand(request));
+    }
+
     private CreateBookingCommand toCommand(CreateBookingRequest request) {
         return new CreateBookingCommand(
                 request.roomId(),
@@ -67,6 +81,12 @@ public class BookingController {
                 request.attendeeCount(),
                 request.participantsText(),
                 request.description());
+    }
+
+    private UpdateBookingCommand toCommand(UpdateBookingRequest request) {
+        return new UpdateBookingCommand(
+                request.version(), request.roomId(), request.subject(), request.startTime(), request.endTime(),
+                request.attendeeCount(), request.participantsText(), request.description());
     }
 
     private ResponseEntity<?> toCreateResponse(
