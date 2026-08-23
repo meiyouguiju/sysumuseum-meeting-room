@@ -4,14 +4,17 @@ import edu.sysu.museummeetingroom.common.api.ApiErrorResponse;
 import edu.sysu.museummeetingroom.common.exception.ApiException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(ApiException.class)
@@ -34,8 +37,25 @@ public class GlobalExceptionHandler {
                 request);
     }
 
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiErrorResponse> handleRequestBody(HttpMessageNotReadableException exception, HttpServletRequest request) {
+        return response(
+                HttpStatus.BAD_REQUEST,
+                "REQUEST_BODY_INVALID",
+                "请求体格式不合法。",
+                List.of(),
+                request);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleUnexpected(Exception exception, HttpServletRequest request) {
+        String requestId = RequestIdFilter.getRequestId(request);
+        log.error(
+                "Unhandled exception, requestId={}, method={}, uri={}",
+                requestId,
+                request.getMethod(),
+                request.getRequestURI(),
+                exception);
         return response(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "INTERNAL_ERROR",

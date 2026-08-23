@@ -39,7 +39,7 @@
 
 | Method / Path | 权限 | Header / 请求 | 成功响应 | 错误 |
 | --- | --- | --- | --- | --- |
-| `POST /bookings` | 已认证且 ACTIVE | 必需 `Idempotency-Key`；Body 为 `roomId,subject,startTime,endTime,attendeeCount?,participantsText?,description?` | `201` 稳定创建响应 | 见第 4 节 |
+| `POST /bookings` | 已认证且 ACTIVE | 必需 `Idempotency-Key`；Body 为 `roomId,subject,startTime,endTime,attendeeCount?,participantsText?,description?`；`participantsText` 最多 2000 字符、`description` 最多 4000 字符 | `201` 稳定创建响应 | 见第 4 节 |
 | `GET /bookings/idempotency-result` | 当前已认证用户 | 必需 `Idempotency-Key` | `200` 终态结果或 `202 PROCESSING` | `400`、`401`、`404` |
 | `GET /bookings/{bookingId}` | 预约人或 ADMIN | Path id | `200 BookingDetail` | `401`、`403 BOOKING_ACCESS_DENIED`、`404 BOOKING_NOT_FOUND` |
 
@@ -86,6 +86,8 @@
 处理顺序固定：HTTP 请求 → 解析 → 格式校验 → 构造规范化 `CreateBookingCommand` → 计算 SHA-256 `requestHash` → 幂等领取、业务校验和持久化。格式层失败（JSON、未知/缺失字段、类型或日期格式、Key）直接 4xx，不持久化 FAILED。
 
 规范化命令只含 `roomId,subject,startTime,endTime,attendeeCount,participantsText,description`：可选缺失为 null；`subject` 非 null 时以 Java `String.strip()` 去首尾 Unicode 空白，`participantsText` 与 `description` 同样 `strip()` 且结果为空时规范化为 null，三者内部空格和换行保持不变；时间重格式化为固定 LocalDateTime 文本。键名字典序、UTF-8、无额外空白 JSON 计算 Hash。该同一命令必须用于哈希、业务校验和入库，不得重新读取原始 DTO。
+
+`participantsText` 的业务输入上限为 2000 个 Java 字符，`description` 为 4000 个 Java 字符。它们是 HTTP/API 业务边界，不等同于 MySQL `TEXT` 在 `utf8mb4` 下的理论字节容量；超限属于格式层校验错误，必须在领取幂等记录前以 `400 REQUEST_VALIDATION_ERROR` 返回。
 
 短事务先提交 `(CREATE_BOOKING,CurrentUser.id,key)` 的 PROCESSING；业务事务 `SELECT ... FOR UPDATE` 锁定它，写 booking、全部 booking_slot、审计并写 SUCCEEDED 及稳定首次响应；确定性业务失败回滚后以独立短事务写 FAILED；基础设施异常保留 PROCESSING，由恢复任务在取得行锁后终结。`response_body` 只保存稳定业务内容、状态码、失败码/bookingId，不保存 requestId、displayStatus 或当前时间。
 

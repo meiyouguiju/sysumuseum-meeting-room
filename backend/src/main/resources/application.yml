@@ -14,6 +14,8 @@ spring:
     baseline-on-migrate: false
   jackson:
     time-zone: Asia/Shanghai
+    deserialization:
+      fail-on-unknown-properties: true
 
 server:
   port: ${SERVER_PORT:8080}
