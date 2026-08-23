@@ -2,6 +2,7 @@ package edu.sysu.museummeetingroom.schedule.service;
 
 import edu.sysu.museummeetingroom.common.config.TimeConfiguration;
 import edu.sysu.museummeetingroom.common.exception.ApiException;
+import edu.sysu.museummeetingroom.booking.query.BookingDisplayStatusResolver;
 import edu.sysu.museummeetingroom.room.mapper.MeetingRoomMapper;
 import edu.sysu.museummeetingroom.room.mapper.RoomRow;
 import edu.sysu.museummeetingroom.schedule.dto.ScheduleResponse;
@@ -22,6 +23,7 @@ public class ScheduleService {
 
     private final MeetingRoomMapper meetingRoomMapper;
     private final ScheduleMapper scheduleMapper;
+    private final BookingDisplayStatusResolver bookingDisplayStatusResolver;
     private final Clock businessClock;
 
     public ScheduleResponse getSchedule(LocalDate date) {
@@ -44,8 +46,8 @@ public class ScheduleService {
     }
 
     private ScheduleResponse.ScheduleBooking toBooking(ScheduleBookingRow booking, LocalDateTime now) {
-        String displayStatus = now.isBefore(booking.startTime()) ? "UPCOMING"
-                : now.isBefore(booking.endTime()) ? "IN_PROGRESS" : "ENDED";
+        String displayStatus = bookingDisplayStatusResolver.resolve(
+                "ACTIVE", booking.startTime(), booking.endTime(), now);
         return new ScheduleResponse.ScheduleBooking(booking.id(), booking.roomId(), booking.subject(), booking.organizerName(),
                 booking.startTime(), booking.endTime(), displayStatus);
     }

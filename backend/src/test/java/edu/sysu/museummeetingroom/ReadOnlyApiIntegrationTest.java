@@ -47,7 +47,7 @@ class ReadOnlyApiIntegrationTest {
         jdbcTemplate.update("""
                 INSERT INTO sys_user(id, auth_provider, external_subject, login_name, display_name, department_name, role_code, status)
                 VALUES (900001, 'TEST', 'test-user-900001', 'reader', '测试普通用户', '校史馆', 'USER', 'ACTIVE'),
-                       (900002, 'TEST', 'test-admin-900002', 'admin', '测试管理员', '校史馆', 'ADMIN', 'ACTIVE')
+                       (900002, 'TEST', 'test-user-900002', 'other-reader', '另一普通用户', '校史馆', 'USER', 'ACTIVE')
                 """);
         jdbcTemplate.update("""
                 INSERT INTO meeting_room(id, name, location, capacity, facilities_text, usage_notice, status, sort_order)
@@ -58,6 +58,7 @@ class ReadOnlyApiIntegrationTest {
         insertBooking(920002, "进行中会议", "2026-08-22 10:00:00", "2026-08-22 10:30:00", "ACTIVE");
         insertBooking(920003, "已结束会议", "2026-08-22 09:00:00", "2026-08-22 10:00:00", "ACTIVE");
         insertBooking(920004, "已取消会议", "2026-08-22 13:00:00", "2026-08-22 13:30:00", "CANCELLED");
+        insertOtherUserBooking();
         jdbcTemplate.update("""
                 INSERT INTO booking_slot(id, booking_id, room_id, slot_start, occupancy_state)
                 VALUES (930001, 920004, 910002, '2026-08-22 10:00:00', 'CANCELLED_CURRENT_SLOT_HOLD')
@@ -90,13 +91,14 @@ class ReadOnlyApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.timeZone").value("Asia/Shanghai"))
                 .andExpect(jsonPath("$.slotMinutes").value(30))
-                .andExpect(jsonPath("$.bookings.length()").value(3))
+                .andExpect(jsonPath("$.bookings.length()").value(4))
                 .andExpect(jsonPath("$.bookings[?(@.subject == '未来会议')].displayStatus").value("UPCOMING"))
                 .andExpect(jsonPath("$.bookings[?(@.subject == '进行中会议')].displayStatus").value("IN_PROGRESS"))
                 .andExpect(jsonPath("$.bookings[?(@.subject == '已结束会议')].displayStatus").value("ENDED"))
                 .andExpect(jsonPath("$.bookings[?(@.subject == '已取消会议')]").isEmpty())
                 .andExpect(jsonPath("$.bookings[0].participantsText").doesNotExist())
                 .andExpect(jsonPath("$.bookings[0].description").doesNotExist())
+                .andExpect(jsonPath("$.bookings[0].cancelReason").doesNotExist())
                 .andExpect(jsonPath("$.unavailableSlots[0].reason").value("CANCELLED_CURRENT_SLOT_HOLD"));
     }
 
@@ -119,12 +121,98 @@ class ReadOnlyApiIntegrationTest {
         assertThat(responseRequestId).matches("[A-Za-z0-9._:-]{1,64}").isNotEqualTo("bad\r\nvalue");
     }
 
+    @Test
+    void bookingDetailUsesOwnerAdminAndPrivacyBoundaries() throws Exception {
+        mockMvc.perform(get("/api/v1/bookings/920001"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.bookingNo").value("TEST-920001"))
+                .andExpect(jsonPath("$.room.id").value(910002))
+                .andExpect(jsonPath("$.organizer.id").value(900001))
+                .andExpect(jsonPath("$.participantsText").value("私密参会人员"))
+                .andExpect(jsonPath("$.description").value("私密会议说明"))
+                .andExpect(jsonPath("$.version").value(1))
+                .andExpect(jsonPath("$.displayStatus").value("UPCOMING"));
+        mockMvc.perform(get("/api/v1/bookings/920002"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.displayStatus").value("IN_PROGRESS"));
+        mockMvc.perform(get("/api/v1/bookings/920003"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.displayStatus").value("ENDED"));
+        mockMvc.perform(get("/api/v1/bookings/920004"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"))
+                .andExpect(jsonPath("$.displayStatus").value("CANCELLED"));
+
+        mockMvc.perform(get("/api/v1/bookings/920005"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.errorCode").value("BOOKING_ACCESS_DENIED"))
+                .andExpect(jsonPath("$.participantsText").doesNotExist())
+                .andExpect(jsonPath("$.description").doesNotExist());
+
+    }
+
+    @Test
+    void bookingDetailReturnsConsistentNotFoundAndPathValidationErrors() throws Exception {
+        mockMvc.perform(get("/api/v1/bookings/999999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.errorCode").value("BOOKING_NOT_FOUND"));
+        mockMvc.perform(get("/api/v1/bookings/abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("REQUEST_VALIDATION_ERROR"));
+    }
+
+    @Test
+    void myBookingsReturnsOnlyCurrentUsersHistoryWithFixedPagination() throws Exception {
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM booking_slot WHERE booking_id = 920003", Integer.class)).isZero();
+
+        mockMvc.perform(get("/api/v1/me/bookings"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.total").value(4))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.items.length()").value(4))
+                .andExpect(jsonPath("$.items[0].id").value(920004))
+                .andExpect(jsonPath("$.items[0].displayStatus").value("CANCELLED"))
+                .andExpect(jsonPath("$.items[1].displayStatus").value("UPCOMING"))
+                .andExpect(jsonPath("$.items[2].displayStatus").value("IN_PROGRESS"))
+                .andExpect(jsonPath("$.items[3].displayStatus").value("ENDED"))
+                .andExpect(jsonPath("$.items[?(@.id == 920005)]").isEmpty());
+
+        mockMvc.perform(get("/api/v1/me/bookings").param("page", "2").param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(2))
+                .andExpect(jsonPath("$.size").value(2))
+                .andExpect(jsonPath("$.items.length()").value(2))
+                .andExpect(jsonPath("$.items[0].id").value(920002));
+        mockMvc.perform(get("/api/v1/me/bookings").param("size", "101"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("REQUEST_VALIDATION_ERROR"));
+        mockMvc.perform(get("/api/v1/me/bookings").param("page", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("REQUEST_VALIDATION_ERROR"));
+        mockMvc.perform(get("/api/v1/me/bookings").param("page", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("REQUEST_VALIDATION_ERROR"));
+    }
+
     private void insertBooking(long id, String subject, String start, String end, String status) {
         jdbcTemplate.update("""
                 INSERT INTO booking(id, booking_no, room_id, organizer_user_id, organizer_name_snapshot, subject,
                     participants_text, description, start_time, end_time, status, version)
                 VALUES (?, ?, 910002, 900001, '测试普通用户', ?, '私密参会人员', '私密会议说明', ?, ?, ?, 1)
                 """, id, "TEST-" + id, subject, start, end, status);
+    }
+
+    private void insertOtherUserBooking() {
+        jdbcTemplate.update("""
+                INSERT INTO booking(id, booking_no, room_id, organizer_user_id, organizer_name_snapshot, subject,
+                    participants_text, description, start_time, end_time, status, version)
+                VALUES (920005, 'TEST-920005', 910002, 900002, '另一普通用户', '其他用户会议',
+                    '其他用户私密参会人员', '其他用户私密会议说明',
+                    '2026-08-22 14:00:00', '2026-08-22 14:30:00', 'ACTIVE', 1)
+                """);
     }
 
     @TestConfiguration
