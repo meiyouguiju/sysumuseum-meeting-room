@@ -11,6 +11,9 @@ import edu.sysu.museummeetingroom.booking.idempotency.IdempotencyResultService;
 import edu.sysu.museummeetingroom.booking.web.CreateBookingRequest;
 import edu.sysu.museummeetingroom.booking.web.IdempotencyResultResponse;
 import edu.sysu.museummeetingroom.booking.web.UpdateBookingRequest;
+import edu.sysu.museummeetingroom.booking.web.CancelBookingRequest;
+import edu.sysu.museummeetingroom.booking.web.CancelBookingResponse;
+import edu.sysu.museummeetingroom.booking.mutation.service.BookingCancelService;
 import edu.sysu.museummeetingroom.booking.mutation.service.BookingUpdateService;
 import edu.sysu.museummeetingroom.booking.query.dto.BookingDetailResponse;
 import edu.sysu.museummeetingroom.common.api.ApiErrorResponse;
@@ -39,6 +42,7 @@ public class BookingController {
     private final CreateBookingCoordinator createBookingCoordinator;
     private final IdempotencyResultService idempotencyResultService;
     private final BookingUpdateService bookingUpdateService;
+    private final BookingCancelService bookingCancelService;
 
     @PostMapping
     public ResponseEntity<?> create(
@@ -70,6 +74,11 @@ public class BookingController {
             @PathVariable long bookingId,
             @Valid @RequestBody UpdateBookingRequest request) {
         return bookingUpdateService.update(bookingId, toCommand(request));
+    }
+
+    @PostMapping("/{bookingId}/cancel")
+    public CancelBookingResponse cancel(@PathVariable long bookingId, @Valid @RequestBody CancelBookingRequest request) {
+        return bookingCancelService.cancel(bookingId, request.version(), request.reason());
     }
 
     private CreateBookingCommand toCommand(CreateBookingRequest request) {

@@ -22,4 +22,10 @@ public interface BookingSlotMapper {
 
     @Delete("DELETE FROM booking_slot WHERE booking_id = #{bookingId}")
     int deleteByBookingId(@Param("bookingId") long bookingId);
+
+    @org.apache.ibatis.annotations.Update("UPDATE booking_slot SET occupancy_state='CANCELLED_CURRENT_SLOT_HOLD' WHERE booking_id=#{bookingId} AND slot_start=#{slotStart}")
+    int holdCurrentSlot(@Param("bookingId") long bookingId, @Param("slotStart") java.time.LocalDateTime slotStart);
+
+    @Delete("DELETE FROM booking_slot WHERE booking_id=#{bookingId} AND slot_start > #{slotStart}")
+    int deleteFutureSlots(@Param("bookingId") long bookingId, @Param("slotStart") java.time.LocalDateTime slotStart);
 }

@@ -10,6 +10,16 @@ import org.apache.ibatis.annotations.Update;
 public interface BookingMutationMapper {
 
     @Update("""
+            UPDATE booking SET status='CANCELLED', version=version+1, cancelled_at=#{occurredAt},
+            cancelled_by_user_id=#{actorUserId}, cancel_reason=#{reason}, updated_at=#{occurredAt}
+                , last_modified_at=#{occurredAt}, last_modified_by_user_id=#{actorUserId}
+            WHERE id=#{bookingId} AND version=#{version} AND status='ACTIVE'
+            """)
+    int cancelWithVersion(@Param("bookingId") long bookingId, @Param("version") int version,
+            @Param("actorUserId") long actorUserId, @Param("reason") String reason,
+            @Param("occurredAt") LocalDateTime occurredAt);
+
+    @Update("""
             UPDATE booking
             SET room_id = #{command.roomId}, subject = #{command.subject}, attendee_count = #{command.attendeeCount},
                 participants_text = #{command.participantsText}, description = #{command.description},
