@@ -1,13 +1,16 @@
 package edu.sysu.museummeetingroom.admin.booking.controller;
 
 import edu.sysu.museummeetingroom.admin.booking.command.AdminUpdateBookingCommand;
+import edu.sysu.museummeetingroom.admin.booking.service.AdminBookingCancelService;
 import edu.sysu.museummeetingroom.admin.booking.service.AdminBookingUpdateService;
+import edu.sysu.museummeetingroom.admin.booking.web.AdminCancelBookingRequest;
 import edu.sysu.museummeetingroom.admin.booking.web.AdminUpdateBookingRequest;
 import edu.sysu.museummeetingroom.booking.query.dto.BookingDetailResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -16,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminBookingMutationController {
 
     private final AdminBookingUpdateService adminBookingUpdateService;
+    private final AdminBookingCancelService adminBookingCancelService;
 
     @PatchMapping("/api/v1/admin/bookings/{bookingId}")
     public BookingDetailResponse update(
@@ -24,5 +28,12 @@ public class AdminBookingMutationController {
         return adminBookingUpdateService.update(bookingId, new AdminUpdateBookingCommand(
                 request.version(), request.roomId(), request.subject(), request.startTime(), request.endTime(),
                 request.attendeeCount(), request.participantsText(), request.description(), request.reason()));
+    }
+
+    @PostMapping("/api/v1/admin/bookings/{bookingId}/cancel")
+    public edu.sysu.museummeetingroom.booking.web.CancelBookingResponse cancel(
+            @PathVariable long bookingId,
+            @Valid @RequestBody AdminCancelBookingRequest request) {
+        return adminBookingCancelService.cancel(bookingId, request.version(), request.reason());
     }
 }
