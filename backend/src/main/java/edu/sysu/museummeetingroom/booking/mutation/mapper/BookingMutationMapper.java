@@ -34,4 +34,19 @@ public interface BookingMutationMapper {
             @Param("command") UpdateBookingCommand command,
             @Param("actorUserId") long actorUserId,
             @Param("occurredAt") LocalDateTime occurredAt);
+
+    @Update("""
+            UPDATE booking
+            SET subject = #{command.subject}, attendee_count = #{command.attendeeCount},
+                participants_text = #{command.participantsText}, description = #{command.description},
+                version = version + 1, last_modified_at = #{occurredAt},
+                last_modified_by_user_id = #{actorUserId}, updated_at = #{occurredAt}
+            WHERE id = #{bookingId} AND version = #{version} AND status = 'ACTIVE'
+            """)
+    int updateDetailsWithVersion(
+            @Param("bookingId") long bookingId,
+            @Param("version") int version,
+            @Param("command") edu.sysu.museummeetingroom.admin.booking.command.AdminUpdateBookingCommand command,
+            @Param("actorUserId") long actorUserId,
+            @Param("occurredAt") LocalDateTime occurredAt);
 }
