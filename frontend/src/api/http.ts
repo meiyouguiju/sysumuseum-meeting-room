@@ -15,7 +15,9 @@ http.interceptors.response.use(
 
     return Promise.reject(
       new ApiError({
-        message: body?.message ?? (response ? '请求失败，请稍后重试' : '无法连接服务器，请检查网络或服务状态'),
+        message:
+          body?.message ??
+          (response ? '请求失败，请稍后重试' : '无法连接服务器，请检查网络或服务状态'),
         errorCode: body?.errorCode,
         fieldErrors: body?.fieldErrors,
         requestId: body?.requestId,

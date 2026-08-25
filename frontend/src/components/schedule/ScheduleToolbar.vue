@@ -46,5 +46,10 @@ function updateSelectedDate(value: string | null) {
 </template>
 
 <style scoped>
-.schedule-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.schedule-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
 </style>

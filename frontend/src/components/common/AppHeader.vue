@@ -19,8 +19,12 @@ const isAdmin = computed(() => currentUserQuery.data.value?.roleCode === 'ADMIN'
         <span class="admin-menu">管理</span>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item><RouterLink to="/admin/reservations">预约管理</RouterLink></el-dropdown-item>
-            <el-dropdown-item><RouterLink to="/admin/rooms">会议室管理</RouterLink></el-dropdown-item>
+            <el-dropdown-item
+              ><RouterLink to="/admin/reservations">预约管理</RouterLink></el-dropdown-item
+            >
+            <el-dropdown-item
+              ><RouterLink to="/admin/rooms">会议室管理</RouterLink></el-dropdown-item
+            >
           </el-dropdown-menu>
         </template>
       </el-dropdown>

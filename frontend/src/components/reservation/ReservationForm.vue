@@ -30,7 +30,7 @@ const form = reactive({
   subject: props.initialBooking?.subject ?? '',
   startTime: props.initialBooking?.startTime.slice(11, 16) ?? props.initialStartTime,
   endTime: props.initialBooking?.endTime.slice(11, 16) ?? nextHalfHour(props.initialStartTime),
-  attendeeCount: props.initialBooking?.attendeeCount ?? undefined as number | undefined,
+  attendeeCount: props.initialBooking?.attendeeCount ?? (undefined as number | undefined),
   participantsText: props.initialBooking?.participantsText ?? '',
   description: props.initialBooking?.description ?? '',
 })
@@ -38,15 +38,25 @@ const form = reactive({
 const today = todayInShanghai()
 const lastBookableDate = shiftDate(today, 13)
 const selectedRoom = computed(() => props.rooms.find((room) => room.id === form.roomId))
-const isCapacityExceeded = computed(() => form.attendeeCount !== undefined && form.attendeeCount > (selectedRoom.value?.capacity ?? Infinity))
+const isCapacityExceeded = computed(
+  () =>
+    form.attendeeCount !== undefined &&
+    form.attendeeCount > (selectedRoom.value?.capacity ?? Infinity),
+)
 
-watch(() => props.initialRoomId, (roomId) => {
-  form.roomId = roomId
-})
-watch(() => props.initialStartTime, (startTime) => {
-  form.startTime = startTime
-  form.endTime = nextHalfHour(startTime)
-})
+watch(
+  () => props.initialRoomId,
+  (roomId) => {
+    form.roomId = roomId
+  },
+)
+watch(
+  () => props.initialStartTime,
+  (startTime) => {
+    form.startTime = startTime
+    form.endTime = nextHalfHour(startTime)
+  },
+)
 
 function nextHalfHour(time: string): string {
   const index = timeOptions.indexOf(time)
@@ -100,23 +110,69 @@ function submit() {
   <el-form label-position="top" @submit.prevent="submit">
     <el-form-item label="会议室" required>
       <el-select v-model="form.roomId" :disabled="submitting" aria-label="会议室">
-        <el-option v-for="room in rooms" :key="room.id" :label="`${room.name}${room.status === 'DISABLED' ? '（已停用）' : ''}`" :value="room.id" :disabled="room.status === 'DISABLED'" />
+        <el-option
+          v-for="room in rooms"
+          :key="room.id"
+          :label="`${room.name}${room.status === 'DISABLED' ? '（已停用）' : ''}`"
+          :value="room.id"
+          :disabled="room.status === 'DISABLED'"
+        />
       </el-select>
     </el-form-item>
-    <el-form-item label="日期"><el-date-picker v-if="mode === 'edit'" v-model="form.date" type="date" value-format="YYYY-MM-DD" :disabled="submitting" /><el-input v-else :model-value="date" disabled /></el-form-item>
+    <el-form-item label="日期"
+      ><el-date-picker
+        v-if="mode === 'edit'"
+        v-model="form.date"
+        type="date"
+        value-format="YYYY-MM-DD"
+        :disabled="submitting" /><el-input v-else :model-value="date" disabled
+    /></el-form-item>
     <div class="time-fields">
       <el-form-item label="开始时间" required>
-        <el-select v-model="form.startTime" :disabled="submitting" aria-label="开始时间"><el-option v-for="time in timeOptions" :key="time" :label="time" :value="time" /></el-select>
+        <el-select v-model="form.startTime" :disabled="submitting" aria-label="开始时间"
+          ><el-option v-for="time in timeOptions" :key="time" :label="time" :value="time"
+        /></el-select>
       </el-form-item>
       <el-form-item label="结束时间" required>
-        <el-select v-model="form.endTime" :disabled="submitting" aria-label="结束时间"><el-option v-for="time in timeOptions" :key="time" :label="time" :value="time" /></el-select>
+        <el-select v-model="form.endTime" :disabled="submitting" aria-label="结束时间"
+          ><el-option v-for="time in timeOptions" :key="time" :label="time" :value="time"
+        /></el-select>
       </el-form-item>
     </div>
-    <el-form-item label="会议主题" required><el-input v-model="form.subject" :maxlength="200" :disabled="submitting" /></el-form-item>
-    <el-form-item label="预计人数"><el-input-number v-model="form.attendeeCount" :min="0" :max="65535" :disabled="submitting" controls-position="right" /></el-form-item>
-    <el-alert v-if="isCapacityExceeded" title="预计人数超过会议室容量，请确认。" type="warning" :closable="false" show-icon />
-    <el-form-item label="参会人员"><el-input v-model="form.participantsText" type="textarea" :maxlength="2000" :autosize="{ minRows: 2, maxRows: 4 }" :disabled="submitting" /></el-form-item>
-    <el-form-item label="说明"><el-input v-model="form.description" type="textarea" :maxlength="4000" :autosize="{ minRows: 2, maxRows: 4 }" :disabled="submitting" /></el-form-item>
+    <el-form-item label="会议主题" required
+      ><el-input v-model="form.subject" :maxlength="200" :disabled="submitting"
+    /></el-form-item>
+    <el-form-item label="预计人数"
+      ><el-input-number
+        v-model="form.attendeeCount"
+        :min="0"
+        :max="65535"
+        :disabled="submitting"
+        controls-position="right"
+    /></el-form-item>
+    <el-alert
+      v-if="isCapacityExceeded"
+      title="预计人数超过会议室容量，请确认。"
+      type="warning"
+      :closable="false"
+      show-icon
+    />
+    <el-form-item label="参会人员"
+      ><el-input
+        v-model="form.participantsText"
+        type="textarea"
+        :maxlength="2000"
+        :autosize="{ minRows: 2, maxRows: 4 }"
+        :disabled="submitting"
+    /></el-form-item>
+    <el-form-item label="说明"
+      ><el-input
+        v-model="form.description"
+        type="textarea"
+        :maxlength="4000"
+        :autosize="{ minRows: 2, maxRows: 4 }"
+        :disabled="submitting"
+    /></el-form-item>
     <div class="form-actions">
       <el-button :disabled="submitting" @click="emit('cancel')">取消</el-button>
       <el-button type="primary" native-type="submit" :loading="submitting">确认预约</el-button>
@@ -125,6 +181,14 @@ function submit() {
 </template>
 
 <style scoped>
-.time-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.form-actions { display: flex; justify-content: flex-end; gap: 12px; }
+.time-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
 </style>

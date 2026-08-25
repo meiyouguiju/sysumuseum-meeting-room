@@ -2,7 +2,11 @@ import { ref } from 'vue'
 
 import { createBooking, getBookingIdempotencyResult } from '@/api/bookings'
 import { ApiError } from '@/types/api'
-import type { CreateBookingRequest, CreateBookingResponse, IdempotencyResultResponse } from '@/types/booking'
+import type {
+  CreateBookingRequest,
+  CreateBookingResponse,
+  IdempotencyResultResponse,
+} from '@/types/booking'
 
 const MAX_RESULT_POLLS = 5
 const RESULT_POLL_DELAY_MS = 1_000

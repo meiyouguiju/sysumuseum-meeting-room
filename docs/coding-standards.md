@@ -45,6 +45,18 @@
 ## 7. 自动检查
 
 - Maven 使用 Checkstyle 进行自动规范检查，并在 `validate` 阶段执行。
+
 - 当前规则检查 Tab、通配符 import、未使用 import、`NeedBraces`、`OneStatementPerLine` 等机械性和基础规范问题。
+
 - Checkstyle 不承担完整自动代码格式化；4 空格缩进、合理空行、方法可读性和不压缩代码等要求仍由本规范、`AGENTS.md` 与代码审查共同约束。
+
 - 当前项目不使用 Spotless 或 Google Java Format。
+
+## 8.Frontend formatting:
+- Use Prettier as the canonical formatter.
+- Run `npm run format` before commit when formatting changes are needed.
+- Run `npm run format:check` in verification.
+- printWidth: 100
+- 2-space indentation
+- single quotes
+- no semicolons

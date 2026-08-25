@@ -21,7 +21,11 @@ const router = createRouter({
         { path: 'schedule', component: ScheduleView },
         { path: 'my-reservations', component: MyReservationsView },
         { path: 'admin', redirect: '/admin/reservations', meta: { requiresAdmin: true } },
-        { path: 'admin/reservations', component: AdminReservationsView, meta: { requiresAdmin: true } },
+        {
+          path: 'admin/reservations',
+          component: AdminReservationsView,
+          meta: { requiresAdmin: true },
+        },
         { path: 'admin/rooms', component: AdminRoomsView, meta: { requiresAdmin: true } },
       ],
     },

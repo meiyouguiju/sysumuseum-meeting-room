@@ -62,7 +62,8 @@ export function todayInShanghai(): string {
     month: '2-digit',
     day: '2-digit',
   }).formatToParts()
-  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value
 
   return `${part('year')}-${part('month')}-${part('day')}`
 }
@@ -74,7 +75,8 @@ export function currentMinutesInShanghai(): number {
     hourCycle: 'h23',
     minute: '2-digit',
   }).formatToParts()
-  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value
 
   return Number(part('hour')) * 60 + Number(part('minute'))
 }

@@ -21,7 +21,15 @@ const scheduleQuery = useQuery(computed(() => scheduleQueryOptions(selectedDate.
 const queryClient = useQueryClient()
 const selectedBooking = ref<ScheduleBooking>()
 const selectedEmptySlot = ref<{ room: ScheduleRoom; slot: DaySlot }>()
-const { hasUnknownResult, isResolvingUnknownResult, isSubmitting, resetCreateFlow, resolveUnknownResult, startCreateFlow, submit } = useCreateBooking()
+const {
+  hasUnknownResult,
+  isResolvingUnknownResult,
+  isSubmitting,
+  resetCreateFlow,
+  resolveUnknownResult,
+  startCreateFlow,
+  submit,
+} = useCreateBooking()
 const drawerVisible = computed({
   get: () => selectedBooking.value !== undefined,
   set: (visible: boolean) => {
@@ -127,9 +135,15 @@ async function resolveCreateBookingResult() {
     <el-drawer v-model="drawerVisible" title="预约概要" size="360px">
       <el-descriptions v-if="selectedBooking" :column="1" border>
         <el-descriptions-item label="会议主题">{{ selectedBooking.subject }}</el-descriptions-item>
-        <el-descriptions-item label="预约人">{{ selectedBooking.organizerName }}</el-descriptions-item>
-        <el-descriptions-item label="会议室">{{ selectedRoom?.name ?? '未知会议室' }}</el-descriptions-item>
-        <el-descriptions-item label="时间">{{ formatTimeRange(selectedBooking.startTime, selectedBooking.endTime) }}</el-descriptions-item>
+        <el-descriptions-item label="预约人">{{
+          selectedBooking.organizerName
+        }}</el-descriptions-item>
+        <el-descriptions-item label="会议室">{{
+          selectedRoom?.name ?? '未知会议室'
+        }}</el-descriptions-item>
+        <el-descriptions-item label="时间">{{
+          formatTimeRange(selectedBooking.startTime, selectedBooking.endTime)
+        }}</el-descriptions-item>
         <el-descriptions-item label="状态">{{ selectedBookingStatus }}</el-descriptions-item>
       </el-descriptions>
     </el-drawer>
@@ -151,9 +165,34 @@ async function resolveCreateBookingResult() {
 </template>
 
 <style scoped>
-.schedule-page { display: grid; gap: 20px; width: calc(100vw - 48px); margin-left: calc(50% - 50vw + 24px); }
-.schedule-page-header { display: flex; justify-content: space-between; gap: 20px; align-items: center; }
-h1 { margin: 0 0 6px; }
-p { margin: 0; color: #64748b; }
-@media (max-width: 800px) { .schedule-page { width: auto; margin-left: 0; transform: none; } .schedule-page-header { align-items: flex-start; flex-direction: column; } }
+.schedule-page {
+  display: grid;
+  gap: 20px;
+  width: calc(100vw - 48px);
+  margin-left: calc(50% - 50vw + 24px);
+}
+.schedule-page-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+}
+h1 {
+  margin: 0 0 6px;
+}
+p {
+  margin: 0;
+  color: #64748b;
+}
+@media (max-width: 800px) {
+  .schedule-page {
+    width: auto;
+    margin-left: 0;
+    transform: none;
+  }
+  .schedule-page-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
 </style>

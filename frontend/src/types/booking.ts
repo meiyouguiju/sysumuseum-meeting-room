@@ -57,7 +57,24 @@ export interface BookingDetail {
   updatedAt: string
 }
 
-export interface MyBookingsPageResponse { items: BookingDetail[]; page: number; size: number; total: number; totalPages: number }
-export interface UpdateBookingRequest extends CreateBookingRequest { version: number }
-export interface CancelBookingRequest { version: number; reason?: string | null }
-export interface CancelBookingResponse { id: number; status: 'CANCELLED'; version: number; cancelledAt: string; slotRelease: { mode: string; heldSlotStart: string | null; releasedFrom: string | null } }
+export interface MyBookingsPageResponse {
+  items: BookingDetail[]
+  page: number
+  size: number
+  total: number
+  totalPages: number
+}
+export interface UpdateBookingRequest extends CreateBookingRequest {
+  version: number
+}
+export interface CancelBookingRequest {
+  version: number
+  reason?: string | null
+}
+export interface CancelBookingResponse {
+  id: number
+  status: 'CANCELLED'
+  version: number
+  cancelledAt: string
+  slotRelease: { mode: string; heldSlotStart: string | null; releasedFrom: string | null }
+}
