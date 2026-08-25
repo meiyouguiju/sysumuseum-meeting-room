@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
 
 import ErrorState from '@/components/common/ErrorState.vue'
@@ -7,6 +8,8 @@ import { currentUserQueryOptions } from '@/queries/currentUser'
 
 const currentUserQuery = useQuery(currentUserQueryOptions())
 const isAdmin = computed(() => currentUserQuery.data.value?.roleCode === 'ADMIN')
+const route = useRoute()
+const isAdminRoute = computed(() => route.path.startsWith('/admin/'))
 </script>
 
 <template>
@@ -16,7 +19,7 @@ const isAdmin = computed(() => currentUserQuery.data.value?.roleCode === 'ADMIN'
       <RouterLink to="/schedule">日程</RouterLink>
       <RouterLink to="/my-reservations">我的预约</RouterLink>
       <el-dropdown v-if="isAdmin">
-        <span class="admin-menu">管理</span>
+        <span class="admin-menu" :class="{ 'is-active': isAdminRoute }">管理</span>
         <template #dropdown>
           <el-dropdown-menu>
             <el-dropdown-item
