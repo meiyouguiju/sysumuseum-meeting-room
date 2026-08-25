@@ -2,7 +2,7 @@
 import { computed, reactive, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 
-import type { CreateBookingRequest } from '@/types/booking'
+import type { BookingDetail, CreateBookingRequest } from '@/types/booking'
 import type { ScheduleRoom } from '@/types/schedule'
 import { shiftDate, todayInShanghai } from '@/utils/schedule'
 
@@ -10,6 +10,8 @@ const props = defineProps<{
   date: string
   initialRoomId: number
   initialStartTime: string
+  initialBooking?: BookingDetail
+  mode?: 'create' | 'edit'
   rooms: ScheduleRoom[]
   submitting: boolean
 }>()
@@ -23,13 +25,14 @@ const timeOptions = Array.from({ length: 48 }, (_, index) => {
   return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
 })
 const form = reactive({
+  date: props.initialBooking?.startTime.slice(0, 10) ?? props.date,
   roomId: props.initialRoomId,
-  subject: '',
-  startTime: props.initialStartTime,
-  endTime: nextHalfHour(props.initialStartTime),
-  attendeeCount: undefined as number | undefined,
-  participantsText: '',
-  description: '',
+  subject: props.initialBooking?.subject ?? '',
+  startTime: props.initialBooking?.startTime.slice(11, 16) ?? props.initialStartTime,
+  endTime: props.initialBooking?.endTime.slice(11, 16) ?? nextHalfHour(props.initialStartTime),
+  attendeeCount: props.initialBooking?.attendeeCount ?? undefined as number | undefined,
+  participantsText: props.initialBooking?.participantsText ?? '',
+  description: props.initialBooking?.description ?? '',
 })
 
 const today = todayInShanghai()
@@ -51,7 +54,7 @@ function nextHalfHour(time: string): string {
 }
 
 function toDateTime(time: string): string {
-  return `${props.date}T${time}:00`
+  return `${form.date}T${time}:00`
 }
 
 function submit() {
@@ -72,7 +75,7 @@ function submit() {
     ElMessage.error('单次预约最长为 5 小时。')
     return
   }
-  if (props.date < today || props.date > lastBookableDate) {
+  if (form.date < today || form.date > lastBookableDate) {
     ElMessage.error('预约日期必须在今天起连续 14 天内。')
     return
   }
@@ -100,7 +103,7 @@ function submit() {
         <el-option v-for="room in rooms" :key="room.id" :label="`${room.name}${room.status === 'DISABLED' ? '（已停用）' : ''}`" :value="room.id" :disabled="room.status === 'DISABLED'" />
       </el-select>
     </el-form-item>
-    <el-form-item label="日期"><el-input :model-value="date" disabled /></el-form-item>
+    <el-form-item label="日期"><el-date-picker v-if="mode === 'edit'" v-model="form.date" type="date" value-format="YYYY-MM-DD" :disabled="submitting" /><el-input v-else :model-value="date" disabled /></el-form-item>
     <div class="time-fields">
       <el-form-item label="开始时间" required>
         <el-select v-model="form.startTime" :disabled="submitting" aria-label="开始时间"><el-option v-for="time in timeOptions" :key="time" :label="time" :value="time" /></el-select>

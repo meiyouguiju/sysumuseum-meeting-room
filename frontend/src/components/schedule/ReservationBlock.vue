@@ -40,7 +40,7 @@ const dividerIndexes = computed(() => Array.from({ length: Math.max(0, props.slo
 </template>
 
 <style scoped>
-.reservation-block { position: relative; width: 100%; height: 100%; min-width: 0; border: 0; border-radius: 4px; padding: 5px 7px; color: #172554; text-align: left; overflow: hidden; cursor: pointer; font-size: 12px; line-height: 1.25; }
+.reservation-block { position: relative; width: 100%; height: 100%; min-width: 0; border: 0; border-radius: 4px; padding: 5px 7px; color: #172554; text-align: left; overflow: hidden; cursor: pointer; font-size: 12px; line-height: 1.25; outline: 1px solid rgba(51, 65, 85, 0.45); outline-offset: -1px; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.16); }
 .reservation-content { position: relative; z-index: 1; display: flex; min-width: 0; flex-direction: column; gap: 1px; }
 .reservation-content strong, .reservation-content span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .reservation-content strong { font-size: 13px; }
