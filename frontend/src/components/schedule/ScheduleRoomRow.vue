@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ScheduleBooking, ScheduleRoom, UnavailableSlot } from '@/types/schedule'
 import type { DaySlot } from '@/utils/schedule'
-import { calculateSlotSpan, isInFocusWindow, timeToSlotIndex } from '@/utils/schedule'
+import { calculateSlotSpan, currentMinutesInShanghai, isInFocusWindow, timeToSlotIndex, todayInShanghai } from '@/utils/schedule'
 
 import ReservationBlock from './ReservationBlock.vue'
 import UnavailableSlotBlock from './UnavailableSlot.vue'
@@ -11,13 +11,34 @@ const props = defineProps<{
   slots: DaySlot[]
   slotMinutes: number
   focusWindow: { start: string; end: string }
+  date: string
   bookings: ScheduleBooking[]
   unavailableSlots: UnavailableSlot[]
 }>()
-defineEmits<{ selectBooking: [booking: ScheduleBooking] }>()
+const emit = defineEmits<{
+  selectBooking: [booking: ScheduleBooking]
+  selectEmptySlot: [room: ScheduleRoom, slot: DaySlot]
+}>()
 
 function gridStyle(start: number, span = 1) {
   return { gridColumn: `${start + 1} / span ${span}` }
+}
+
+function isCreatableSlot(slot: DaySlot): boolean {
+  if (slot.index === props.slots.length - 1 || props.room.status !== 'ENABLED' || props.date < todayInShanghai()) {
+    return false
+  }
+  if (props.date === todayInShanghai() && slot.minutes <= currentMinutesInShanghai()) {
+    return false
+  }
+  if (props.unavailableSlots.some((unavailableSlot) => timeToSlotIndex(unavailableSlot.slotStart, props.slotMinutes) === slot.index)) {
+    return false
+  }
+  return !props.bookings.some((booking) => {
+    const start = timeToSlotIndex(booking.startTime, props.slotMinutes)
+    const end = start + calculateSlotSpan(booking.startTime, booking.endTime, props.slotMinutes)
+    return slot.index >= start && slot.index < end
+  })
 }
 </script>
 
@@ -30,12 +51,17 @@ function gridStyle(start: number, span = 1) {
     </div>
     <div class="room-timeline">
       <div class="slot-grid">
-        <div
+        <button
           v-for="slot in slots"
           :key="slot.index"
           class="slot-cell"
-          :class="{ 'outside-focus': !isInFocusWindow(slot, focusWindow.start, focusWindow.end), 'hour-boundary': slot.isHour }"
-        />
+          :class="{ 'outside-focus': !isInFocusWindow(slot, focusWindow.start, focusWindow.end), 'hour-boundary': slot.isHour, 'creatable-slot': isCreatableSlot(slot) }"
+          :disabled="!isCreatableSlot(slot)"
+          :aria-label="isCreatableSlot(slot) ? `${room.name} ${slot.label} 创建预约` : undefined"
+          @click="emit('selectEmptySlot', room, slot)"
+        >
+          <span v-if="isCreatableSlot(slot)" class="create-slot-label">+ 预约</span>
+        </button>
       </div>
       <div class="overlay-grid">
         <div
@@ -55,7 +81,7 @@ function gridStyle(start: number, span = 1) {
           <ReservationBlock
             :booking="booking"
             :slot-span="calculateSlotSpan(booking.startTime, booking.endTime, slotMinutes)"
-            @select="$emit('selectBooking', booking)"
+            @select="emit('selectBooking', booking)"
           />
         </div>
       </div>
@@ -72,8 +98,11 @@ function gridStyle(start: number, span = 1) {
 .slot-grid, .overlay-grid { display: grid; grid-template-columns: repeat(var(--slot-count), var(--slot-width)); grid-template-rows: minmax(94px, auto); }
 .slot-grid { min-height: 94px; }
 .overlay-grid { position: absolute; inset: 0; pointer-events: none; }
-.slot-cell { grid-row: 1; border-left: 1px solid #cbd5e1; background: #fff; }
+.slot-cell { grid-row: 1; padding: 0; border: 0; border-left: 1px solid #cbd5e1; background: #fff; }
 .slot-cell.outside-focus { background: #f8fafc; }
 .slot-cell.hour-boundary { border-left: 2px solid #64748b; }
+.creatable-slot { cursor: pointer; }
+.create-slot-label { display: none; color: #2563eb; font-size: 12px; font-weight: 700; }
+.creatable-slot:hover .create-slot-label, .creatable-slot:focus-visible .create-slot-label { display: block; }
 .timeline-overlay { z-index: 1; grid-row: 1; min-width: 0; align-self: stretch; margin: 7px 0; pointer-events: auto; }
 </style>

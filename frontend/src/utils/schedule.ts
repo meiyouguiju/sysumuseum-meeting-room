@@ -67,6 +67,18 @@ export function todayInShanghai(): string {
   return `${part('year')}-${part('month')}-${part('day')}`
 }
 
+export function currentMinutesInShanghai(): number {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    hour: '2-digit',
+    hourCycle: 'h23',
+    minute: '2-digit',
+  }).formatToParts()
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value
+
+  return Number(part('hour')) * 60 + Number(part('minute'))
+}
+
 export function shiftDate(date: string, amount: number): string {
   const matched = date.match(/^(\d{4})-(\d{2})-(\d{2})$/)
   if (!matched) {
