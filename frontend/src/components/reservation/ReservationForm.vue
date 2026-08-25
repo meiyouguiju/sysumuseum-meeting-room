@@ -191,4 +191,14 @@ function submit() {
   justify-content: flex-end;
   gap: 12px;
 }
+@media (max-width: 760px) {
+  .time-fields {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .form-actions .el-button {
+    min-height: 42px;
+    flex: 1;
+  }
+}
 </style>

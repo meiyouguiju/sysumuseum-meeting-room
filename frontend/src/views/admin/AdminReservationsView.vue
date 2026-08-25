@@ -62,7 +62,7 @@ function closeDrawer() {
 function canEdit(value: BookingDetail) {
   return value.status === 'ACTIVE' && value.displayStatus !== 'ENDED'
 }
-function statusText(value: BookingDetail) {
+function statusText(value: Pick<BookingDetail, 'status' | 'displayStatus'>) {
   return value.status === 'CANCELLED'
     ? '已取消'
     : { UPCOMING: '未开始', IN_PROGRESS: '进行中', ENDED: '已结束' }[value.displayStatus]
@@ -228,7 +228,32 @@ async function exportCsv() {
       :error="listQuery.error.value"
       @retry="listQuery.refetch()"
     /><template v-else-if="listQuery.data.value"
-      ><el-table :data="listQuery.data.value.items"
+      ><div class="mobile-admin-cards">
+        <article v-for="row in listQuery.data.value.items" :key="row.id" class="admin-card">
+          <strong>{{ row.subject }}</strong
+          ><span>{{ row.roomName }}</span
+          ><span>预约人：{{ row.organizerName }}</span
+          ><span>{{ row.startTime.slice(0, 10) }}</span
+          ><span>{{ formatTimeRange(row.startTime, row.endTime) }} · {{ statusText(row) }}</span>
+          <div>
+            <el-button link type="primary" @click="openDetail(row.id)">查看</el-button
+            ><el-button
+              v-if="row.status === 'ACTIVE' && row.displayStatus !== 'ENDED'"
+              link
+              type="primary"
+              @click="openEdit(row.id)"
+              >修改</el-button
+            ><el-button
+              v-if="row.status === 'ACTIVE' && row.displayStatus !== 'ENDED'"
+              link
+              type="danger"
+              @click="openDetail(row.id)"
+              >取消</el-button
+            >
+          </div>
+        </article>
+      </div>
+      <el-table class="desktop-admin-table" :data="listQuery.data.value.items"
         ><el-table-column prop="bookingNo" label="预约号" min-width="180" /><el-table-column
           prop="roomName"
           label="会议室"
@@ -361,5 +386,32 @@ h1 {
 .actions {
   justify-content: flex-end;
   margin-top: 20px;
+}
+.mobile-admin-cards {
+  display: none;
+}
+@media (max-width: 760px) {
+  .desktop-admin-table {
+    display: none;
+  }
+  .mobile-admin-cards {
+    display: grid;
+    gap: 12px;
+  }
+  .admin-card {
+    display: grid;
+    gap: 6px;
+    padding: 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #fff;
+  }
+  .admin-card > div {
+    display: flex;
+    gap: 8px;
+  }
+  .admin-card .el-button {
+    min-height: 40px;
+  }
 }
 </style>

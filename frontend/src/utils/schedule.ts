@@ -94,3 +94,29 @@ export function shiftDate(date: string, amount: number): string {
 
   return value.toISOString().slice(0, 10)
 }
+
+export function isCreatableScheduleSlot(input: {
+  date: string
+  roomStatus: 'ENABLED' | 'DISABLED'
+  slot: DaySlot
+  slots: DaySlot[]
+  slotMinutes: number
+  bookings: Array<{ startTime: string; endTime: string }>
+  unavailableSlots: Array<{ slotStart: string }>
+}): boolean {
+  if (input.roomStatus !== 'ENABLED' || input.slot.index === input.slots.length - 1) return false
+  if (input.date < todayInShanghai()) return false
+  if (input.date === todayInShanghai() && input.slot.minutes <= currentMinutesInShanghai())
+    return false
+  if (
+    input.unavailableSlots.some(
+      (slot) => timeToSlotIndex(slot.slotStart, input.slotMinutes) === input.slot.index,
+    )
+  )
+    return false
+  return !input.bookings.some((booking) => {
+    const start = timeToSlotIndex(booking.startTime, input.slotMinutes)
+    const end = start + calculateSlotSpan(booking.startTime, booking.endTime, input.slotMinutes)
+    return input.slot.index >= start && input.slot.index < end
+  })
+}

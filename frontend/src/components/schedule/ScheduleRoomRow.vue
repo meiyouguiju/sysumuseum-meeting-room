@@ -3,10 +3,9 @@ import type { ScheduleBooking, ScheduleRoom, UnavailableSlot } from '@/types/sch
 import type { DaySlot } from '@/utils/schedule'
 import {
   calculateSlotSpan,
-  currentMinutesInShanghai,
+  isCreatableScheduleSlot,
   isInFocusWindow,
   timeToSlotIndex,
-  todayInShanghai,
 } from '@/utils/schedule'
 
 import ReservationBlock from './ReservationBlock.vue'
@@ -31,28 +30,14 @@ function gridStyle(start: number, span = 1) {
 }
 
 function isCreatableSlot(slot: DaySlot): boolean {
-  if (
-    slot.index === props.slots.length - 1 ||
-    props.room.status !== 'ENABLED' ||
-    props.date < todayInShanghai()
-  ) {
-    return false
-  }
-  if (props.date === todayInShanghai() && slot.minutes <= currentMinutesInShanghai()) {
-    return false
-  }
-  if (
-    props.unavailableSlots.some(
-      (unavailableSlot) =>
-        timeToSlotIndex(unavailableSlot.slotStart, props.slotMinutes) === slot.index,
-    )
-  ) {
-    return false
-  }
-  return !props.bookings.some((booking) => {
-    const start = timeToSlotIndex(booking.startTime, props.slotMinutes)
-    const end = start + calculateSlotSpan(booking.startTime, booking.endTime, props.slotMinutes)
-    return slot.index >= start && slot.index < end
+  return isCreatableScheduleSlot({
+    date: props.date,
+    roomStatus: props.room.status,
+    slot,
+    slots: props.slots,
+    slotMinutes: props.slotMinutes,
+    bookings: props.bookings,
+    unavailableSlots: props.unavailableSlots,
   })
 }
 </script>

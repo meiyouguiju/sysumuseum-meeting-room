@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import { ElMessage } from 'element-plus'
 
@@ -7,7 +7,9 @@ import ErrorState from '@/components/common/ErrorState.vue'
 import LoadingState from '@/components/common/LoadingState.vue'
 import CreateReservationDrawer from '@/components/reservation/CreateReservationDrawer.vue'
 import DesktopScheduleGrid from '@/components/schedule/DesktopScheduleGrid.vue'
+import MobileScheduleTimeline from '@/components/schedule/MobileScheduleTimeline.vue'
 import ScheduleToolbar from '@/components/schedule/ScheduleToolbar.vue'
+import { useMobileBreakpoint } from '@/composables/useMobileBreakpoint'
 import { useCreateBooking, type CreateBookingSubmission } from '@/composables/useCreateBooking'
 import { scheduleQueryOptions } from '@/queries/schedule'
 import { scheduleQueryKey } from '@/queries/schedule'
@@ -21,6 +23,8 @@ const scheduleQuery = useQuery(computed(() => scheduleQueryOptions(selectedDate.
 const queryClient = useQueryClient()
 const selectedBooking = ref<ScheduleBooking>()
 const selectedEmptySlot = ref<{ room: ScheduleRoom; slot: DaySlot }>()
+const selectedMobileRoomId = ref<number>()
+const { isMobile } = useMobileBreakpoint()
 const {
   hasUnknownResult,
   isResolvingUnknownResult,
@@ -46,6 +50,24 @@ const selectedRoom = computed(() => {
 
   return scheduleQuery.data.value?.rooms.find((room) => room.id === selectedBooking.value?.roomId)
 })
+const selectedMobileRoom = computed(() => {
+  const rooms = scheduleQuery.data.value?.rooms ?? []
+  return rooms.find((room) => room.id === selectedMobileRoomId.value) ?? rooms[0]
+})
+
+watch(
+  () => scheduleQuery.data.value?.rooms,
+  (rooms) => {
+    if (
+      rooms &&
+      rooms.length > 0 &&
+      !rooms.some((room) => room.id === selectedMobileRoomId.value)
+    ) {
+      selectedMobileRoomId.value = rooms[0]!.id
+    }
+  },
+  { immediate: true },
+)
 
 const selectedBookingStatus = computed(() => {
   const status = selectedBooking.value?.displayStatus
@@ -126,13 +148,42 @@ async function resolveCreateBookingResult() {
       @retry="scheduleQuery.refetch()"
     />
     <DesktopScheduleGrid
-      v-else-if="scheduleQuery.data.value"
+      v-else-if="scheduleQuery.data.value && !isMobile"
       :schedule="scheduleQuery.data.value"
       @select-booking="selectedBooking = $event"
       @select-empty-slot="selectEmptySlot"
     />
+    <template v-else-if="scheduleQuery.data.value && selectedMobileRoom">
+      <div class="mobile-room-selector">
+        <label class="mobile-room-label">会议室</label>
 
-    <el-drawer v-model="drawerVisible" title="预约概要" size="360px">
+        <el-select
+          v-model="selectedMobileRoomId"
+          placeholder="请选择会议室"
+          class="mobile-room-select"
+        >
+          <el-option
+            v-for="room in scheduleQuery.data.value.rooms"
+            :key="room.id"
+            :label="`${room.name}${room.status === 'DISABLED' ? '（已停用）' : ''}`"
+            :value="room.id"
+          />
+        </el-select>
+
+        <div v-if="selectedMobileRoom" class="mobile-room-summary">
+          {{ selectedMobileRoom.capacity }} 人
+          <span v-if="selectedMobileRoom.status === 'DISABLED'"> · 已停用</span>
+        </div>
+      </div>
+      <MobileScheduleTimeline
+        :schedule="scheduleQuery.data.value"
+        :room="selectedMobileRoom"
+        @select-booking="selectedBooking = $event"
+        @select-empty-slot="selectEmptySlot"
+      />
+    </template>
+
+    <el-drawer v-model="drawerVisible" title="预约概要" :size="isMobile ? '100%' : '360px'">
       <el-descriptions v-if="selectedBooking" :column="1" border>
         <el-descriptions-item label="会议主题">{{ selectedBooking.subject }}</el-descriptions-item>
         <el-descriptions-item label="预约人">{{
@@ -194,5 +245,22 @@ p {
     align-items: flex-start;
     flex-direction: column;
   }
+}
+.mobile-room-selector {
+  display: grid;
+  gap: 8px;
+}
+
+.mobile-room-label {
+  font-weight: 700;
+}
+
+.mobile-room-select {
+  width: 100%;
+}
+
+.mobile-room-summary {
+  color: #64748b;
+  font-size: 14px;
 }
 </style>

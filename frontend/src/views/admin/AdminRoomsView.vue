@@ -90,37 +90,58 @@ async function toggleRoom(room: Room) {
       v-else-if="roomsQuery.isError.value"
       :error="roomsQuery.error.value"
       @retry="roomsQuery.refetch()"
-    /><el-table v-else :data="roomsQuery.data.value ?? []"
-      ><el-table-column prop="name" label="名称" min-width="160" /><el-table-column
-        prop="location"
-        label="位置"
-        min-width="160"
-      /><el-table-column prop="capacity" label="容量" width="90" /><el-table-column
-        prop="facilitiesText"
-        label="设施"
-        min-width="160"
-      /><el-table-column prop="usageNotice" label="使用须知" min-width="180" /><el-table-column
-        label="状态"
-        width="100"
-        ><template #default="{ row }"
-          ><el-tag :type="row.status === 'ENABLED' ? 'success' : 'info'">{{
-            row.status === 'ENABLED' ? '启用' : '已停用'
-          }}</el-tag></template
-        ></el-table-column
-      ><el-table-column prop="sortOrder" label="排序" width="80" /><el-table-column
-        label="操作"
-        width="160"
-        ><template #default="{ row }"
-          ><el-button link type="primary" @click="openEdit(row)">编辑</el-button
-          ><el-button
-            link
-            :type="row.status === 'ENABLED' ? 'danger' : 'success'"
-            :loading="submitting"
-            @click="toggleRoom(row)"
-            >{{ row.status === 'ENABLED' ? '停用' : '启用' }}</el-button
-          ></template
-        ></el-table-column
-      ></el-table
+    /><template v-else
+      ><div class="mobile-room-cards">
+        <article v-for="room in roomsQuery.data.value ?? []" :key="room.id" class="room-card">
+          <strong>{{ room.name }}</strong
+          ><span>{{ room.location }}</span
+          ><span>容量：{{ room.capacity }} 人</span
+          ><span>状态：{{ room.status === 'ENABLED' ? '启用' : '已停用' }}</span
+          ><span>排序：{{ room.sortOrder }}</span>
+          <div>
+            <el-button link type="primary" @click="openEdit(room)">编辑</el-button
+            ><el-button
+              link
+              :type="room.status === 'ENABLED' ? 'danger' : 'success'"
+              :loading="submitting"
+              @click="toggleRoom(room)"
+              >{{ room.status === 'ENABLED' ? '停用' : '启用' }}</el-button
+            >
+          </div>
+        </article>
+      </div>
+      <el-table class="desktop-room-table" :data="roomsQuery.data.value ?? []"
+        ><el-table-column prop="name" label="名称" min-width="160" /><el-table-column
+          prop="location"
+          label="位置"
+          min-width="160"
+        /><el-table-column prop="capacity" label="容量" width="90" /><el-table-column
+          prop="facilitiesText"
+          label="设施"
+          min-width="160"
+        /><el-table-column prop="usageNotice" label="使用须知" min-width="180" /><el-table-column
+          label="状态"
+          width="100"
+          ><template #default="{ row }"
+            ><el-tag :type="row.status === 'ENABLED' ? 'success' : 'info'">{{
+              row.status === 'ENABLED' ? '启用' : '已停用'
+            }}</el-tag></template
+          ></el-table-column
+        ><el-table-column prop="sortOrder" label="排序" width="80" /><el-table-column
+          label="操作"
+          width="160"
+          ><template #default="{ row }"
+            ><el-button link type="primary" @click="openEdit(row)">编辑</el-button
+            ><el-button
+              link
+              :type="row.status === 'ENABLED' ? 'danger' : 'success'"
+              :loading="submitting"
+              @click="toggleRoom(row)"
+              >{{ row.status === 'ENABLED' ? '停用' : '启用' }}</el-button
+            ></template
+          ></el-table-column
+        ></el-table
+      ></template
     ><el-dialog
       v-model="formVisible"
       :title="editingRoom ? '修改会议室' : '新增会议室'"
@@ -148,5 +169,32 @@ async function toggleRoom(room: Room) {
 }
 h1 {
   margin: 0;
+}
+.mobile-room-cards {
+  display: none;
+}
+@media (max-width: 760px) {
+  .desktop-room-table {
+    display: none;
+  }
+  .mobile-room-cards {
+    display: grid;
+    gap: 12px;
+  }
+  .room-card {
+    display: grid;
+    gap: 6px;
+    padding: 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #fff;
+  }
+  .room-card > div {
+    display: flex;
+    gap: 8px;
+  }
+  .room-card .el-button {
+    min-height: 40px;
+  }
 }
 </style>

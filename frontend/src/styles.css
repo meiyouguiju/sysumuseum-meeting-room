@@ -100,3 +100,41 @@ a {
   background: rgb(255 255 255 / 16%);
   box-shadow: inset 0 -3px 0 #fff;
 }
+
+@media (max-width: 760px) {
+  .app-header {
+    gap: 8px;
+    min-height: 0;
+  }
+  .brand {
+    flex: 1;
+    white-space: normal;
+  }
+  .user-summary {
+    font-size: 14px;
+  }
+  .main-nav {
+    gap: 4px;
+    overflow-x: auto;
+  }
+  .main-nav > a,
+  .admin-menu {
+    min-height: 40px;
+    padding: 10px 12px;
+    white-space: nowrap;
+  }
+  .page-container {
+    overflow-x: hidden;
+    padding: 16px;
+  }
+  .el-drawer {
+    width: 100% !important;
+  }
+  .el-table__body-wrapper {
+    overflow-x: auto;
+  }
+  .el-dialog {
+    width: calc(100% - 32px) !important;
+    margin: 8vh auto !important;
+  }
+}

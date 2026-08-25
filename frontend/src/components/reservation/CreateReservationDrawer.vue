@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import ReservationForm from './ReservationForm.vue'
 
+import { useMobileBreakpoint } from '@/composables/useMobileBreakpoint'
+
 import type { CreateBookingRequest } from '@/types/booking'
 import type { ScheduleRoom } from '@/types/schedule'
 
@@ -20,13 +22,14 @@ const emit = defineEmits<{
   submit: [request: CreateBookingRequest]
   resolveUnknown: []
 }>()
+const { isMobile } = useMobileBreakpoint()
 </script>
 
 <template>
   <el-drawer
     :model-value="modelValue"
     title="创建预约"
-    size="420px"
+    :size="isMobile ? '100%' : '420px'"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <el-alert
@@ -73,5 +76,10 @@ const emit = defineEmits<{
 }
 .retry-result {
   margin-top: 12px;
+}
+@media (max-width: 760px) {
+  :deep(.el-drawer__body) {
+    padding: 16px;
+  }
 }
 </style>

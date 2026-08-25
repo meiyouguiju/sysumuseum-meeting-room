@@ -7,6 +7,7 @@ import { cancelMyBooking, getBookingDetail, updateMyBooking } from '@/api/bookin
 import ErrorState from '@/components/common/ErrorState.vue'
 import LoadingState from '@/components/common/LoadingState.vue'
 import ReservationForm from '@/components/reservation/ReservationForm.vue'
+import { useMobileBreakpoint } from '@/composables/useMobileBreakpoint'
 import {
   bookingDetailQueryKey,
   bookingDetailQueryOptions,
@@ -24,6 +25,7 @@ const selectedId = ref<number>()
 const isEditing = ref(false)
 const isMutating = ref(false)
 const editSnapshot = ref<BookingDetail>()
+const { isMobile } = useMobileBreakpoint()
 const queryClient = useQueryClient()
 const listQuery = useQuery(computed(() => myBookingsQueryOptions(page.value, size)))
 const roomsQuery = useQuery(roomsQueryOptions())
@@ -171,7 +173,25 @@ async function cancelBooking() {
     />
     <el-empty v-else-if="listQuery.data.value?.items.length === 0" description="暂无预约" />
     <template v-else-if="listQuery.data.value">
-      <el-table :data="listQuery.data.value.items">
+      <div class="mobile-reservation-list">
+        <article v-for="item in listQuery.data.value.items" :key="item.id" class="reservation-card">
+          <strong>{{ item.subject }}</strong
+          ><span>{{ item.room.name }}</span
+          ><span
+            >{{ item.startTime.slice(0, 10) }}
+            {{ formatTimeRange(item.startTime, item.endTime) }}</span
+          ><span>状态：{{ statusText(item) }}</span>
+          <div>
+            <el-button link type="primary" @click="openDetail(item.id)">查看</el-button
+            ><el-button v-if="canEdit(item)" link type="primary" @click="openEdit(item.id)"
+              >修改</el-button
+            ><el-button v-if="canCancel(item)" link type="danger" @click="openDetail(item.id)"
+              >取消</el-button
+            >
+          </div>
+        </article>
+      </div>
+      <el-table class="desktop-reservation-table" :data="listQuery.data.value.items">
         <el-table-column prop="subject" label="会议主题" min-width="180" />
         <el-table-column label="会议室" min-width="150"
           ><template #default="{ row }">{{ row.room.name }}</template></el-table-column
@@ -208,7 +228,11 @@ async function cancelBooking() {
         @current-change="page = $event"
       />
     </template>
-    <el-drawer v-model="visible" :title="isEditing ? '修改预约' : '预约详情'" size="440px">
+    <el-drawer
+      v-model="visible"
+      :title="isEditing ? '修改预约' : '预约详情'"
+      :size="isMobile ? '100%' : '440px'"
+    >
       <LoadingState v-if="detailQuery.isPending.value" />
       <ErrorState
         v-else-if="detailQuery.isError.value"
@@ -283,5 +307,32 @@ h1 {
   justify-content: flex-end;
   gap: 12px;
   margin-top: 20px;
+}
+.mobile-reservation-list {
+  display: none;
+}
+@media (max-width: 760px) {
+  .desktop-reservation-table {
+    display: none;
+  }
+  .mobile-reservation-list {
+    display: grid;
+    gap: 12px;
+  }
+  .reservation-card {
+    display: grid;
+    gap: 6px;
+    padding: 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #fff;
+  }
+  .reservation-card > div {
+    display: flex;
+    gap: 8px;
+  }
+  .reservation-card .el-button {
+    min-height: 40px;
+  }
 }
 </style>
