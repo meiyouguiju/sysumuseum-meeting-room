@@ -1,12 +1,17 @@
 import { queryOptions } from '@tanstack/vue-query'
 
 import { getAdminBookings } from '@/api/admin/bookings'
+import type { AdminBookingsParams } from '@/types/admin'
 
-export const adminBookingsQueryKey = (page: number, size: number) =>
-  ['admin-bookings', page, size] as const
+export const adminBookingsQueryKey = (page: number, size: number, filters: AdminBookingsParams) =>
+  ['admin-bookings', page, size, filters.organizerKeyword, filters.date, filters.status] as const
 
-export const adminBookingsQueryOptions = (page: number, size: number) =>
+export const adminBookingsQueryOptions = (
+  page: number,
+  size: number,
+  filters: AdminBookingsParams,
+) =>
   queryOptions({
-    queryKey: adminBookingsQueryKey(page, size),
-    queryFn: () => getAdminBookings(page, size),
+    queryKey: adminBookingsQueryKey(page, size, filters),
+    queryFn: () => getAdminBookings(page, size, filters),
   })

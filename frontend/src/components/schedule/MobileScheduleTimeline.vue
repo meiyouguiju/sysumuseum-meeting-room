@@ -124,10 +124,12 @@ onBeforeUnmount(() => {
       ><button
         v-if="bookingAt(slot)"
         class="mobile-booking"
+        :class="{ 'mobile-booking-mine': bookingAt(slot)?.isMine }"
         :style="{ '--booking-span': bookingSpan(bookingAt(slot)!) }"
         @click="emit('selectBooking', bookingAt(slot)!)"
       >
         <strong>{{ bookingAt(slot)?.subject }}</strong
+        ><span v-if="bookingAt(slot)?.isMine" class="mobile-mine-label">我的预约</span
         ><span>{{ bookingAt(slot)?.organizerName }}</span
         ><span
           >{{ bookingAt(slot)?.startTime.slice(11, 16) }}–{{
@@ -217,6 +219,18 @@ onBeforeUnmount(() => {
 }
 .mobile-booking span {
   font-size: 12px;
+}
+.mobile-booking-mine {
+  outline: 2px solid #047857;
+  outline-offset: -2px;
+}
+.mobile-mine-label {
+  width: fit-content;
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: #fff;
+  background: #047857;
+  font-weight: 700;
 }
 .mobile-current-time {
   position: absolute;

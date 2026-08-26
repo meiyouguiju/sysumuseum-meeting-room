@@ -6,6 +6,7 @@ import { ElMessage } from 'element-plus'
 import ErrorState from '@/components/common/ErrorState.vue'
 import LoadingState from '@/components/common/LoadingState.vue'
 import CreateReservationDrawer from '@/components/reservation/CreateReservationDrawer.vue'
+import MyBookingDetailDrawer from '@/components/reservation/MyBookingDetailDrawer.vue'
 import DesktopScheduleGrid from '@/components/schedule/DesktopScheduleGrid.vue'
 import MobileScheduleTimeline from '@/components/schedule/MobileScheduleTimeline.vue'
 import ScheduleToolbar from '@/components/schedule/ScheduleToolbar.vue'
@@ -22,6 +23,7 @@ const selectedDate = ref(todayInShanghai())
 const scheduleQuery = useQuery(computed(() => scheduleQueryOptions(selectedDate.value)))
 const queryClient = useQueryClient()
 const selectedBooking = ref<ScheduleBooking>()
+const selectedMyBookingId = ref<number>()
 const selectedEmptySlot = ref<{ room: ScheduleRoom; slot: DaySlot }>()
 const selectedMobileRoomId = ref<number>()
 const { isMobile } = useMobileBreakpoint()
@@ -40,6 +42,12 @@ const drawerVisible = computed({
     if (!visible) {
       selectedBooking.value = undefined
     }
+  },
+})
+const myBookingDrawerVisible = computed({
+  get: () => selectedMyBookingId.value !== undefined,
+  set: (visible: boolean) => {
+    if (!visible) selectedMyBookingId.value = undefined
   },
 })
 
@@ -87,6 +95,13 @@ const createDrawerVisible = computed({
 function selectEmptySlot(room: ScheduleRoom, slot: DaySlot) {
   selectedEmptySlot.value = { room, slot }
   startCreateFlow()
+}
+function selectBooking(booking: ScheduleBooking) {
+  if (booking.isMine) {
+    selectedMyBookingId.value = booking.id
+    return
+  }
+  selectedBooking.value = booking
 }
 
 async function handleCreateSubmission(result: CreateBookingSubmission) {
@@ -150,7 +165,7 @@ async function resolveCreateBookingResult() {
     <DesktopScheduleGrid
       v-else-if="scheduleQuery.data.value && !isMobile"
       :schedule="scheduleQuery.data.value"
-      @select-booking="selectedBooking = $event"
+      @select-booking="selectBooking"
       @select-empty-slot="selectEmptySlot"
     />
     <template v-else-if="scheduleQuery.data.value && selectedMobileRoom">
@@ -178,7 +193,7 @@ async function resolveCreateBookingResult() {
       <MobileScheduleTimeline
         :schedule="scheduleQuery.data.value"
         :room="selectedMobileRoom"
-        @select-booking="selectedBooking = $event"
+        @select-booking="selectBooking"
         @select-empty-slot="selectEmptySlot"
       />
     </template>
@@ -198,6 +213,7 @@ async function resolveCreateBookingResult() {
         <el-descriptions-item label="状态">{{ selectedBookingStatus }}</el-descriptions-item>
       </el-descriptions>
     </el-drawer>
+    <MyBookingDetailDrawer v-model="myBookingDrawerVisible" :booking-id="selectedMyBookingId" />
     <CreateReservationDrawer
       v-if="selectedEmptySlot"
       v-model="createDrawerVisible"

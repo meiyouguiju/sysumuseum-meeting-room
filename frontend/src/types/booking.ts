@@ -64,6 +64,13 @@ export interface MyBookingsPageResponse {
   total: number
   totalPages: number
 }
+
+export type BookingFilterStatus = BookingDetail['displayStatus'] | 'CANCELLED'
+
+export interface MyBookingsParams {
+  status?: BookingFilterStatus
+  date?: string
+}
 export interface UpdateBookingRequest extends CreateBookingRequest {
   version: number
 }

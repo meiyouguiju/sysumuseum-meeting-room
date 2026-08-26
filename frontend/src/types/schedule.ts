@@ -19,6 +19,7 @@ export interface ScheduleBooking {
   roomId: number
   subject: string
   organizerName: string
+  isMine: boolean
   startTime: string
   endTime: string
   displayStatus: ScheduleBookingDisplayStatus

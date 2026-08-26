@@ -106,8 +106,9 @@ export function isCreatableScheduleSlot(input: {
 }): boolean {
   if (input.roomStatus !== 'ENABLED' || input.slot.index === input.slots.length - 1) return false
   if (input.date < todayInShanghai()) return false
-  if (input.date === todayInShanghai() && input.slot.minutes <= currentMinutesInShanghai())
-    return false
+  const currentSlotStart =
+    Math.floor(currentMinutesInShanghai() / input.slotMinutes) * input.slotMinutes
+  if (input.date === todayInShanghai() && input.slot.minutes < currentSlotStart) return false
   if (
     input.unavailableSlots.some(
       (slot) => timeToSlotIndex(slot.slotStart, input.slotMinutes) === input.slot.index,

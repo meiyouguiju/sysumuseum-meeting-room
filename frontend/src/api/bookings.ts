@@ -7,6 +7,7 @@ import type {
   BookingDetail,
   IdempotencyResultResponse,
   MyBookingsPageResponse,
+  MyBookingsParams,
   UpdateBookingRequest,
 } from '@/types/booking'
 
@@ -36,8 +37,16 @@ export async function getBookingIdempotencyResult(
   return response.data
 }
 
-export async function getMyBookings(page: number, size: number): Promise<MyBookingsPageResponse> {
-  return (await http.get<MyBookingsPageResponse>('/me/bookings', { params: { page, size } })).data
+export async function getMyBookings(
+  page: number,
+  size: number,
+  filters: MyBookingsParams = {},
+): Promise<MyBookingsPageResponse> {
+  return (
+    await http.get<MyBookingsPageResponse>('/me/bookings', {
+      params: { page, size, ...filters },
+    })
+  ).data
 }
 export async function getBookingDetail(bookingId: number): Promise<BookingDetail> {
   return (await http.get<BookingDetail>(`/bookings/${bookingId}`)).data

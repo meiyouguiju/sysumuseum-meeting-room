@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
@@ -14,6 +14,7 @@ import { currentUserQueryOptions } from '@/queries/currentUser'
 import { roomsQueryOptions } from '@/queries/rooms'
 import { scheduleQueryKey } from '@/queries/schedule'
 import type {
+  AdminBookingsParams,
   AdminBookingUpdateRequest,
   AdminInProgressBookingUpdateRequest,
   AdminUpcomingBookingUpdateRequest,
@@ -28,10 +29,16 @@ const selectedId = ref<number>()
 const editSnapshot = ref<BookingDetail>()
 const isEditing = ref(false)
 const isMutating = ref(false)
-const exportVisible = ref(false)
-const exportForm = reactive({ fromDate: '', toDate: '' })
+const filters = reactive<AdminBookingsParams>({})
+const requestFilters = computed<AdminBookingsParams>(() => ({
+  organizerKeyword: filters.organizerKeyword?.trim() || undefined,
+  date: filters.date,
+  status: filters.status,
+}))
 const queryClient = useQueryClient()
-const listQuery = useQuery(computed(() => adminBookingsQueryOptions(page.value, size)))
+const listQuery = useQuery(
+  computed(() => adminBookingsQueryOptions(page.value, size, requestFilters.value)),
+)
 const roomsQuery = useQuery(roomsQueryOptions())
 const currentUserQuery = useQuery(currentUserQueryOptions())
 const detailQuery = useQuery({
@@ -46,6 +53,10 @@ const visible = computed({
   set: (value) => {
     if (!value) closeDrawer()
   },
+})
+
+watch(filters, () => {
+  page.value = 1
 })
 
 function cloneBooking(value: BookingDetail): BookingDetail {
@@ -192,15 +203,8 @@ async function cancelBooking() {
   }
 }
 async function exportCsv() {
-  if (exportForm.fromDate && exportForm.toDate && exportForm.fromDate > exportForm.toDate) {
-    ElMessage.error('开始日期不能晚于结束日期。')
-    return
-  }
   try {
-    const response = await exportAdminBookings(
-      exportForm.fromDate || undefined,
-      exportForm.toDate || undefined,
-    )
+    const response = await exportAdminBookings(requestFilters.value)
     const url = URL.createObjectURL(response.data)
     const link = document.createElement('a')
     link.href = url
@@ -209,11 +213,16 @@ async function exportCsv() {
       'booking-records.csv'
     link.click()
     URL.revokeObjectURL(url)
-    exportVisible.value = false
     ElMessage.success('CSV 已开始下载')
   } catch (error) {
     ElMessage.error((error as ApiError).message ?? '导出失败，请稍后重试。')
   }
+}
+function resetFilters() {
+  filters.organizerKeyword = undefined
+  filters.date = undefined
+  filters.status = undefined
+  page.value = 1
 }
 </script>
 
@@ -221,7 +230,40 @@ async function exportCsv() {
   <section class="admin-page">
     <div class="page-title">
       <h1>预约管理</h1>
-      <el-button type="primary" @click="exportVisible = true">导出 CSV</el-button>
+      <el-button type="primary" @click="exportCsv">导出 CSV</el-button>
+    </div>
+    <div class="filters">
+      <el-input
+        v-model="filters.organizerKeyword"
+        class="filter-keyword"
+        clearable
+        placeholder="预约人关键词"
+        aria-label="预约人关键词"
+      />
+
+      <el-date-picker
+        v-model="filters.date"
+        class="filter-date"
+        type="date"
+        value-format="YYYY-MM-DD"
+        clearable
+        placeholder="选择日期"
+        aria-label="日期筛选"
+      />
+
+      <el-select
+        v-model="filters.status"
+        class="filter-status"
+        clearable
+        placeholder="全部状态"
+        aria-label="状态筛选"
+      >
+        <el-option label="即将开始" value="UPCOMING" />
+        <el-option label="进行中" value="IN_PROGRESS" />
+        <el-option label="已结束" value="ENDED" />
+        <el-option label="已取消" value="CANCELLED" />
+      </el-select>
+      <el-button @click="resetFilters">重置</el-button>
     </div>
     <LoadingState v-if="listQuery.isPending.value" /><ErrorState
       v-else-if="listQuery.isError.value"
@@ -345,22 +387,6 @@ async function exportCsv() {
           >
         </div></template
       ></el-drawer
-    ><el-dialog v-model="exportVisible" title="导出预约 CSV" width="420px"
-      ><el-form label-position="top"
-        ><el-form-item label="开始日期（可选）"
-          ><el-date-picker
-            v-model="exportForm.fromDate"
-            type="date"
-            value-format="YYYY-MM-DD" /></el-form-item
-        ><el-form-item label="结束日期（可选）"
-          ><el-date-picker
-            v-model="exportForm.toDate"
-            type="date"
-            value-format="YYYY-MM-DD" /></el-form-item></el-form
-      ><template #footer
-        ><el-button @click="exportVisible = false">取消</el-button
-        ><el-button type="primary" @click="exportCsv">导出</el-button></template
-      ></el-dialog
     >
   </section>
 </template>
@@ -390,6 +416,24 @@ h1 {
 .mobile-admin-cards {
   display: none;
 }
+.filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.filter-keyword {
+  width: 220px;
+}
+
+.filter-date {
+  width: 180px;
+}
+
+.filter-status {
+  width: 160px;
+}
 @media (max-width: 760px) {
   .desktop-admin-table {
     display: none;
@@ -412,6 +456,14 @@ h1 {
   }
   .admin-card .el-button {
     min-height: 40px;
+  }
+  .filters {
+    display: grid;
+  }
+  .filter-keyword,
+  .filter-date,
+  .filter-status {
+    width: 100%;
   }
 }
 </style>

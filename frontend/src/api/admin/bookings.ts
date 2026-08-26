@@ -5,11 +5,16 @@ import type {
   AdminBookingsPageResponse,
   AdminCancelBookingRequest,
   AdminCancelBookingResponse,
+  AdminBookingsParams,
 } from '@/types/admin'
 
-export async function getAdminBookings(page: number, size: number) {
+export async function getAdminBookings(
+  page: number,
+  size: number,
+  filters: AdminBookingsParams = {},
+) {
   const response = await http.get<AdminBookingsPageResponse>('/admin/bookings', {
-    params: { page, size },
+    params: { page, size, ...filters },
   })
   return response.data
 }
@@ -27,9 +32,9 @@ export async function cancelAdminBooking(id: number, request: AdminCancelBooking
   return response.data
 }
 
-export async function exportAdminBookings(fromDate?: string, toDate?: string) {
+export async function exportAdminBookings(filters: AdminBookingsParams = {}) {
   const response = await http.get<Blob>('/admin/bookings/export', {
-    params: { ...(fromDate ? { fromDate } : {}), ...(toDate ? { toDate } : {}) },
+    params: filters,
     responseType: 'blob',
   })
   return response

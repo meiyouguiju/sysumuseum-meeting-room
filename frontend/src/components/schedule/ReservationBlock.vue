@@ -31,7 +31,10 @@ const dividerIndexes = computed(() =>
   >
     <button
       class="reservation-block"
-      :class="`reservation-${booking.displayStatus.toLowerCase()}`"
+      :class="[
+        `reservation-${booking.displayStatus.toLowerCase()}`,
+        { 'reservation-mine': booking.isMine },
+      ]"
       @click="$emit('select', booking)"
     >
       <span
@@ -43,6 +46,7 @@ const dividerIndexes = computed(() =>
       />
       <span class="reservation-content">
         <strong>{{ booking.subject }}</strong>
+        <span v-if="booking.isMine" class="mine-label">我的预约</span>
         <span class="reservation-organizer">{{ booking.organizerName }}</span>
         <span>{{ timeRange }}</span>
         <span class="reservation-status">{{ statusText }}</span>
@@ -108,6 +112,18 @@ const dividerIndexes = computed(() =>
   color: #374151;
 }
 .reservation-status {
+  font-weight: 700;
+}
+.reservation-mine {
+  outline: 2px solid #047857;
+  outline-offset: -2px;
+}
+.mine-label {
+  width: fit-content;
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: #fff;
+  background: #047857;
   font-weight: 700;
 }
 @media (max-width: 760px) {
