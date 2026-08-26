@@ -78,6 +78,8 @@
                 <configuration>
                     <systemPropertyVariables>
                         <maintenance.scheduling.enabled>false</maintenance.scheduling.enabled>
+                        <spring.datasource.hikari.maximum-pool-size>2</spring.datasource.hikari.maximum-pool-size>
+                        <spring.datasource.hikari.minimum-idle>0</spring.datasource.hikari.minimum-idle>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>

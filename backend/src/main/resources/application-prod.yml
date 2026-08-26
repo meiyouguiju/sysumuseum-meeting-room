@@ -1,0 +1,18 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+logging:
+  file:
+    name: ${LOG_DIR:/var/log/museum-meeting-room}/museum-meeting-room.log
+  level:
+    root: INFO
+    edu.sysu.museummeetingroom: INFO
+  logback:
+    rollingpolicy:
+      file-name-pattern: ${LOG_DIR:/var/log/museum-meeting-room}/museum-meeting-room.%d{yyyy-MM-dd}.%i.log.gz
+      max-file-size: 100MB
+      max-history: 30
+      total-size-cap: 5GB
+      clean-history-on-start: true
