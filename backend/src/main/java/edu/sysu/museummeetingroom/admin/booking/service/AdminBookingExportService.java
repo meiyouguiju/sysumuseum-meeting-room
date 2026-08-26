@@ -39,14 +39,10 @@ public class AdminBookingExportService {
             LocalDate fromDate,
             LocalDate toDate) {
         requireAdmin();
-        validateDateCompatibility(date, fromDate, toDate);
         LocalDateTime now = LocalDateTime.now(businessClock);
-        BookingListFilter filter = BookingListFilter.forAdminBookings(organizerKeyword, status, date, now);
-        DateRange dateRange = resolveDateRange(date, fromDate, toDate);
-        List<AdminBookingExportRow> rows = adminBookingExportMapper.findForExport(
-                filter,
-                dateRange.fromTime(),
-                dateRange.toTime());
+        BookingListFilter filter = BookingListFilter.forAdminBookings(
+                organizerKeyword, status, date, fromDate, toDate, now);
+        List<AdminBookingExportRow> rows = adminBookingExportMapper.findForExport(filter);
         StringBuilder csv = new StringBuilder();
         appendRow(csv, HEADERS);
         for (AdminBookingExportRow row : rows) {
@@ -65,31 +61,6 @@ public class AdminBookingExportService {
             throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "仅管理员可导出预约记录。");
         }
     }
-
-    private void validateDateCompatibility(LocalDate date, LocalDate fromDate, LocalDate toDate) {
-        if (date != null && (fromDate != null || toDate != null)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "REQUEST_VALIDATION_ERROR", "date 不能与 fromDate 或 toDate 同时使用。");
-        }
-    }
-
-    private DateRange resolveDateRange(LocalDate date, LocalDate fromDate, LocalDate toDate) {
-        if (date != null) {
-            return new DateRange(date.atStartOfDay(), date.plusDays(1).atStartOfDay());
-        }
-        if (fromDate == null && toDate == null) {
-            return new DateRange(null, null);
-        }
-
-        LocalDate today = LocalDate.now(businessClock);
-        LocalDate resolvedFromDate = fromDate == null ? today : fromDate;
-        LocalDate resolvedToDate = toDate == null ? today : toDate;
-        if (resolvedFromDate.isAfter(resolvedToDate)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "REQUEST_VALIDATION_ERROR", "导出开始日期不能晚于结束日期。");
-        }
-        return new DateRange(resolvedFromDate.atStartOfDay(), resolvedToDate.plusDays(1).atStartOfDay());
-    }
-
-    private record DateRange(LocalDateTime fromTime, LocalDateTime toTime) {}
 
     private List<String> valuesOf(AdminBookingExportRow row) {
         return List.of(

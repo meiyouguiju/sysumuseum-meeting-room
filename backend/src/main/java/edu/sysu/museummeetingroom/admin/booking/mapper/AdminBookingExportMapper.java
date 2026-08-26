@@ -1,7 +1,6 @@
 package edu.sysu.museummeetingroom.admin.booking.mapper;
 
 import edu.sysu.museummeetingroom.booking.query.BookingListFilter;
-import java.time.LocalDateTime;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -20,17 +19,14 @@ public interface AdminBookingExportMapper {
             FROM booking b
             INNER JOIN meeting_room r ON r.id = b.room_id
             WHERE 1 = 1
-            <if test="fromTime != null">
-              AND b.start_time >= #{fromTime}
+            <if test="filter.fromTime != null">
+              AND b.start_time >= #{filter.fromTime}
             </if>
-            <if test="toTime != null">
-              AND b.start_time &lt; #{toTime}
+            <if test="filter.toTime != null">
+              AND b.start_time &lt; #{filter.toTime}
             </if>
             <if test="filter.organizerKeyword != null">
               AND b.organizer_name_snapshot LIKE CONCAT('%', #{filter.organizerKeyword}, '%')
-            </if>
-            <if test="filter.dayStart != null">
-              AND b.start_time >= #{filter.dayStart} AND b.start_time &lt; #{filter.nextDayStart}
             </if>
             <choose>
               <when test="filter.status == 'CANCELLED'">
@@ -49,8 +45,5 @@ public interface AdminBookingExportMapper {
             ORDER BY b.start_time ASC, b.id ASC
             </script>
             """)
-    List<AdminBookingExportRow> findForExport(
-            @Param("filter") BookingListFilter filter,
-            @Param("fromTime") LocalDateTime fromTime,
-            @Param("toTime") LocalDateTime toTime);
+    List<AdminBookingExportRow> findForExport(@Param("filter") BookingListFilter filter);
 }

@@ -139,6 +139,53 @@ class AdminBookingQueryIntegrationTest {
     }
 
     @Test
+    void filtersByInclusiveDateRangeAndSupportsSingleBoundAndLegacyDate() throws Exception {
+        insertBooking(984106L, "范围开始", "2026-08-21 11:00:00", "2026-08-21 12:00:00", "ACTIVE");
+        insertBooking(984107L, "范围结束", "2026-08-23 11:00:00", "2026-08-23 12:00:00", "ACTIVE");
+
+        mockMvc.perform(get("/api/v1/admin/bookings")
+                        .param("fromDate", "2026-08-22")
+                        .param("toDate", "2026-08-23")
+                        .param("status", "UPCOMING")
+                        .param("organizerKeyword", " 列表预约人 "))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[?(@.id == 984101)]").exists())
+                .andExpect(jsonPath("$.items[?(@.id == 984107)]").exists())
+                .andExpect(jsonPath("$.items[?(@.id == 984106)]").doesNotExist());
+        mockMvc.perform(get("/api/v1/admin/bookings").param("fromDate", "2026-08-23"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[?(@.id == 984107)]").exists())
+                .andExpect(jsonPath("$.items[?(@.id == 984101)]").doesNotExist());
+        mockMvc.perform(get("/api/v1/admin/bookings").param("toDate", "2026-08-21"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[?(@.id == 984106)]").exists())
+                .andExpect(jsonPath("$.items[?(@.id == 984101)]").doesNotExist());
+        mockMvc.perform(get("/api/v1/admin/bookings").param("date", "2026-08-22"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[?(@.id == 984101)]").exists())
+                .andExpect(jsonPath("$.items[?(@.id == 984106)]").doesNotExist());
+    }
+
+    @Test
+    void rejectsIncompatibleOrReversedAdminDateParameters() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/bookings")
+                        .param("fromDate", "2026-08-23")
+                        .param("toDate", "2026-08-22"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("REQUEST_VALIDATION_ERROR"));
+        mockMvc.perform(get("/api/v1/admin/bookings")
+                        .param("date", "2026-08-22")
+                        .param("fromDate", "2026-08-22"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("REQUEST_VALIDATION_ERROR"));
+        mockMvc.perform(get("/api/v1/admin/bookings")
+                        .param("date", "2026-08-22")
+                        .param("toDate", "2026-08-22"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("REQUEST_VALIDATION_ERROR"));
+    }
+
+    @Test
     void scheduleMarksOnlyTheAdministratorsOwnBookingAsMine() throws Exception {
         jdbcTemplate.update("""
                 INSERT INTO booking(id, booking_no, room_id, organizer_user_id, organizer_name_snapshot, subject,
@@ -186,9 +233,9 @@ class AdminBookingQueryIntegrationTest {
     }
 
     private void removeFixture() {
-        jdbcTemplate.update("DELETE FROM booking_audit_log WHERE booking_id BETWEEN 984101 AND 984106");
-        jdbcTemplate.update("DELETE FROM booking_slot WHERE booking_id BETWEEN 984101 AND 984106");
-        jdbcTemplate.update("DELETE FROM booking WHERE id BETWEEN 984101 AND 984106");
+        jdbcTemplate.update("DELETE FROM booking_audit_log WHERE booking_id BETWEEN 984101 AND 984107");
+        jdbcTemplate.update("DELETE FROM booking_slot WHERE booking_id BETWEEN 984101 AND 984107");
+        jdbcTemplate.update("DELETE FROM booking WHERE id BETWEEN 984101 AND 984107");
         jdbcTemplate.update("DELETE FROM meeting_room WHERE id = ?", ROOM_ID);
         jdbcTemplate.update("DELETE FROM sys_user WHERE id IN (?, ?)", ADMIN_ID, OWNER_ID);
     }

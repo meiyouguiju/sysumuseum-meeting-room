@@ -30,9 +30,11 @@ const editSnapshot = ref<BookingDetail>()
 const isEditing = ref(false)
 const isMutating = ref(false)
 const filters = reactive<AdminBookingsParams>({})
+const dateRange = ref<[string, string]>()
 const requestFilters = computed<AdminBookingsParams>(() => ({
   organizerKeyword: filters.organizerKeyword?.trim() || undefined,
-  date: filters.date,
+  fromDate: dateRange.value?.[0],
+  toDate: dateRange.value?.[1],
   status: filters.status,
 }))
 const queryClient = useQueryClient()
@@ -56,6 +58,9 @@ const visible = computed({
 })
 
 watch(filters, () => {
+  page.value = 1
+})
+watch(dateRange, () => {
   page.value = 1
 })
 
@@ -220,7 +225,7 @@ async function exportCsv() {
 }
 function resetFilters() {
   filters.organizerKeyword = undefined
-  filters.date = undefined
+  dateRange.value = undefined
   filters.status = undefined
   page.value = 1
 }
@@ -242,13 +247,15 @@ function resetFilters() {
       />
 
       <el-date-picker
-        v-model="filters.date"
+        v-model="dateRange"
         class="filter-date"
-        type="date"
+        type="daterange"
         value-format="YYYY-MM-DD"
         clearable
-        placeholder="选择日期"
-        aria-label="日期筛选"
+        range-separator="至"
+        start-placeholder="开始日期"
+        end-placeholder="结束日期"
+        aria-label="日期范围筛选"
       />
 
       <el-select
@@ -428,7 +435,7 @@ h1 {
 }
 
 .filter-date {
-  width: 180px;
+  width: 320px;
 }
 
 .filter-status {

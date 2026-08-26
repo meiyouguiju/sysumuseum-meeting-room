@@ -17,8 +17,11 @@ public interface AdminBookingQueryMapper {
             <if test="filter.organizerKeyword != null">
               AND organizer_name_snapshot LIKE CONCAT('%', #{filter.organizerKeyword}, '%')
             </if>
-            <if test="filter.dayStart != null">
-              AND start_time >= #{filter.dayStart} AND start_time &lt; #{filter.nextDayStart}
+            <if test="filter.fromTime != null">
+              AND start_time >= #{filter.fromTime}
+            </if>
+            <if test="filter.toTime != null">
+              AND start_time &lt; #{filter.toTime}
             </if>
             <choose>
               <when test="filter.status == 'CANCELLED'">
@@ -50,8 +53,11 @@ public interface AdminBookingQueryMapper {
             <if test="filter.organizerKeyword != null">
               AND b.organizer_name_snapshot LIKE CONCAT('%', #{filter.organizerKeyword}, '%')
             </if>
-            <if test="filter.dayStart != null">
-              AND b.start_time >= #{filter.dayStart} AND b.start_time &lt; #{filter.nextDayStart}
+            <if test="filter.fromTime != null">
+              AND b.start_time >= #{filter.fromTime}
+            </if>
+            <if test="filter.toTime != null">
+              AND b.start_time &lt; #{filter.toTime}
             </if>
             <choose>
               <when test="filter.status == 'CANCELLED'">

@@ -4,7 +4,15 @@ import { getAdminBookings } from '@/api/admin/bookings'
 import type { AdminBookingsParams } from '@/types/admin'
 
 export const adminBookingsQueryKey = (page: number, size: number, filters: AdminBookingsParams) =>
-  ['admin-bookings', page, size, filters.organizerKeyword, filters.date, filters.status] as const
+  [
+    'admin-bookings',
+    page,
+    size,
+    filters.organizerKeyword,
+    filters.fromDate,
+    filters.toDate,
+    filters.status,
+  ] as const
 
 export const adminBookingsQueryOptions = (
   page: number,

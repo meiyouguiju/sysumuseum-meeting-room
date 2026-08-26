@@ -70,10 +70,10 @@
 
 | Method / Path | 权限 | 请求 | 成功响应 | 错误 |
 | --- | --- | --- | --- | --- |
-| `GET /admin/bookings?page=&size=&organizerKeyword?=&date?=&status?` | ADMIN | 分页；可选筛选，先筛选后分页 | `200` 管理员摘要分页，按 `startTime DESC,id DESC` | `401`、`403` |
+| `GET /admin/bookings?page=&size=&organizerKeyword?=&fromDate?=&toDate?=&status?=&date?` | ADMIN | 分页；可选筛选，先筛选后分页；date 为兼容参数 | `200` 管理员摘要分页，按 `startTime DESC,id DESC` | `400`、`401`、`403` |
 | `PATCH /admin/bookings/{bookingId}` | ADMIN、ACTIVE、未结束 | 按状态见下文 | `200 BookingDetail` | `401`、`403`、`404`、`409`、`422` |
 | `POST /admin/bookings/{bookingId}/cancel` | ADMIN、ACTIVE、未结束 | `{version,reason}` | `200` 槽释放摘要 | `401`、`403`、`404`、`409` |
-| `GET /admin/bookings/export?organizerKeyword?=&date?=&status?=&fromDate?=&toDate?` | ADMIN | V1.1 使用前三项筛选；fromDate/toDate 仅兼容且不得与 date 并用 | `200 text/csv; charset=utf-8` | `400`、`401`、`403` |
+| `GET /admin/bookings/export?organizerKeyword?=&fromDate?=&toDate?=&status?=&date?` | ADMIN | 与管理员列表使用同一筛选；date 仅兼容且不得与 fromDate/toDate 并用 | `200 text/csv; charset=utf-8` | `400`、`401`、`403` |
 
 管理员未开始预约的修改 body 必须完整：`version,roomId,subject,startTime,endTime,attendeeCount,participantsText,description,reason`。已开始未结束预约的 body 只允许：`version,subject,attendeeCount,participantsText,description,reason`；不得提交 `roomId,startTime,endTime`，否则 `409 BOOKING_STARTED_TIME_FIELDS_IMMUTABLE`。已结束不可改。修改/取消他人均必须填写原因并记录完整审计；管理员也不能代订，且同样受未来 14 天约束。进行中取消规则同普通用户。
 
@@ -115,8 +115,8 @@
 
 本文完整保留 V1.0 契约；以下为最终覆盖规则。`GET /schedules?date=` 的 bookings[] 增加必返 `isMine:boolean`，服务端按 CurrentUser.userId 判断。
 
-`GET /me/bookings?page=&size=&status?=&date?` 新增 status/date；status 仅 `UPCOMING|IN_PROGRESS|ENDED|CANCELLED`，date 为 YYYY-MM-DD。`GET /admin/bookings?page=&size=&organizerKeyword?=&date?=&status?` 新增三项筛选，organizerKeyword 对 displayName 模糊匹配且 trim 后空值视为未传。两接口全部先筛选后分页。
+`GET /me/bookings?page=&size=&status?=&date?` 新增 status/date；status 仅 `UPCOMING|IN_PROGRESS|ENDED|CANCELLED`，date 为 YYYY-MM-DD。管理员 V1.1.1 使用 `GET /admin/bookings?page=&size=&organizerKeyword?=&fromDate?=&toDate?=&status?`；organizerKeyword 对 displayName 模糊匹配且 trim 后空值视为未传。fromDate/toDate 分别为开始日下界和结束日上界，均按 Asia/Shanghai 自然日解释；两者同时提供时 fromDate 不得晚于 toDate。两接口全部先筛选后分页。
 
-`GET /admin/bookings/export?organizerKeyword?=&date?=&status?=&fromDate?=&toDate?` 导出全部命中筛选数据，不接受 page/size。V1.1 新客户端必须使用前三项；fromDate/toDate 保留兼容。date 与任一 fromDate/toDate 同时出现必须 400 REQUEST_VALIDATION_ERROR。
+`GET /admin/bookings/export?organizerKeyword?=&fromDate?=&toDate?=&status?=&date?` 导出全部命中筛选数据，不接受 page/size，并与管理员列表使用同一筛选。V1.1.1 新客户端必须使用 organizerKeyword/fromDate/toDate/status；date 保留兼容。date 与任一 fromDate/toDate 同时出现必须 400 REQUEST_VALIDATION_ERROR。
 
 `POST /bookings` Request DTO 不增加字段。startTime 最早允许服务端处理时刻向下取整到 30 分钟边界，处理时重新校验；早于该边界返回 BOOKING_TIME_INVALID。

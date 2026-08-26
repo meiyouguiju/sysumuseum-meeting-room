@@ -153,7 +153,7 @@ HTTP Status + errorCode
 
 ['my-bookings', page, size, status, date]
 
-['admin-bookings', page, size, organizerKeyword, date, status]
+['admin-bookings', page, size, organizerKeyword, fromDate, toDate, status]
 ```
 
 不要使用无业务含义的：
@@ -941,7 +941,7 @@ Schedule 会通过 unavailableSlots 正确返回当前保留槽。
 ## API
 
 ```http
-GET /api/v1/admin/bookings?page=&size=&organizerKeyword?=&date?=&status?=
+GET /api/v1/admin/bookings?page=&size=&organizerKeyword?=&fromDate?=&toDate?=&status?=
 ```
 
 ## 权限
@@ -972,7 +972,7 @@ id DESC
 ## Query Key
 
 ```text
-['admin-bookings', page, size, organizerKeyword, date, status]
+['admin-bookings', page, size, organizerKeyword, fromDate, toDate, status]
 ```
 
 ---
@@ -1764,14 +1764,15 @@ GET /api/v1/admin/bookings?page=&size=&organizerKeyword?=&date?=&status?=
 page
 size
 organizerKeyword?
-date?
+fromDate?
+toDate?
 status?
 ```
 
 其中：
 
 - `organizerKeyword`：预约人 `displayName` 关键词；
-- `date`：预约 `startTime` 所属自然日；
+- `fromDate` / `toDate`：预约 `startTime` 的 Asia/Shanghai 自然日范围；单独提供任一边界时分别表示无上界或无下界。
 - `status`：`UPCOMING | IN_PROGRESS | ENDED | CANCELLED`。
 
 筛选必须由服务端在分页之前执行。
@@ -1779,14 +1780,15 @@ status?
 正式 CSV API：
 
 ```http
-GET /api/v1/admin/bookings/export?organizerKeyword?=&date?=&status?=
+GET /api/v1/admin/bookings/export?organizerKeyword?=&fromDate?=&toDate?=&status?=
 ```
 
 V1.1 前端直接使用当前管理员列表的：
 
 ```text
 organizerKeyword
-date
+fromDate
+toDate
 status
 ```
 
@@ -1801,7 +1803,7 @@ size
 
 影响。
 
-`fromDate/toDate` 仅作为后端兼容参数保留；V1.1 前端不得发送。`date` 与任一 `fromDate/toDate` 同时提供时，服务端必须返回参数校验错误。
+`date` 仅作为后端兼容参数保留；V1.1.1 前端不得发送。`date` 与任一 `fromDate/toDate` 同时提供时，服务端必须返回参数校验错误；fromDate 晚于 toDate 同样必须返回参数校验错误。
 
 ---
 
@@ -2039,8 +2041,8 @@ V1.0 文档继续保留作为历史基线和版本演进记录，但不是 V1.1 
 | 日程本人详情/修改/取消 | GET/PATCH/POST `/bookings/{id}` | 仅 isMine=true；复用 F3 |
 | 我的预约 | GET `/me/bookings` | status/date，先筛选后分页 |
 | 创建预约 | POST `/bookings` | 当前 30 分钟槽允许，处理时重新校验 |
-| 管理员列表 | GET `/admin/bookings` | organizerKeyword/date/status |
+| 管理员列表 | GET `/admin/bookings` | organizerKeyword/fromDate/toDate/status |
 | CSV | GET `/admin/bookings/export` | 同管理员筛选，导出全部命中数据 |
 | CSV 日期 Dialog | 无 | V1.1 废弃 |
 
-My Bookings Key 必须为 `['my-bookings', page, size, status, date]`；Admin Key 必须为 `['admin-bookings', page, size, organizerKeyword, date, status]`。CSV 禁止 page/size，date 与 fromDate/toDate 不得同时发送。
+My Bookings Key 必须为 `['my-bookings', page, size, status, date]`；Admin Key 必须为 `['admin-bookings', page, size, organizerKeyword, fromDate, toDate, status]`。CSV 禁止 page/size，date 与 fromDate/toDate 不得同时发送。

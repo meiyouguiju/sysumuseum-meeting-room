@@ -35,6 +35,8 @@ public class AdminBookingQueryService {
             Integer size,
             String organizerKeyword,
             LocalDate date,
+            LocalDate fromDate,
+            LocalDate toDate,
             String status) {
         requireAdmin();
         int resolvedPage = page == null ? DEFAULT_PAGE : page;
@@ -42,7 +44,8 @@ public class AdminBookingQueryService {
         validatePage(resolvedPage, resolvedSize);
 
         LocalDateTime now = LocalDateTime.now(businessClock);
-        BookingListFilter filter = BookingListFilter.forAdminBookings(organizerKeyword, status, date, now);
+        BookingListFilter filter = BookingListFilter.forAdminBookings(
+                organizerKeyword, status, date, fromDate, toDate, now);
         long total = adminBookingQueryMapper.countAll(filter);
         long offset = ((long) resolvedPage - 1) * resolvedSize;
         List<AdminBookingListItemResponse> items = adminBookingQueryMapper.findPage(filter, resolvedSize, offset)

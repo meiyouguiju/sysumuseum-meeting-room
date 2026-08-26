@@ -107,6 +107,31 @@ class AdminBookingExportIntegrationTest {
     }
 
     @Test
+    void supportsSingleRangeBoundsAndMatchesAdminListFilters() throws Exception {
+        MvcResult fromOnly = mockMvc.perform(get("/api/v1/admin/bookings/export")
+                        .param("fromDate", "2026-08-25"))
+                .andExpect(status().isOk())
+                .andReturn();
+        assertThat(fromOnly.getResponse().getContentAsString(StandardCharsets.UTF_8))
+                .contains("EXPORT-988103")
+                .doesNotContain("EXPORT-988101", "EXPORT-988102");
+
+        MvcResult toOnly = mockMvc.perform(get("/api/v1/admin/bookings/export")
+                        .param("toDate", "2026-08-24"))
+                .andExpect(status().isOk())
+                .andReturn();
+        assertThat(toOnly.getResponse().getContentAsString(StandardCharsets.UTF_8))
+                .contains("EXPORT-988101", "EXPORT-988102")
+                .doesNotContain("EXPORT-988103");
+
+        mockMvc.perform(get("/api/v1/admin/bookings/export")
+                        .param("date", "2026-08-24")
+                        .param("toDate", "2026-08-24"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("REQUEST_VALIDATION_ERROR"));
+    }
+
+    @Test
     void exportsAllRecordsUsingTheSameV11FiltersAsTheAdminList() throws Exception {
         MvcResult result = mockMvc.perform(get("/api/v1/admin/bookings/export")
                         .param("organizerKeyword", "导出预约人")

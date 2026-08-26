@@ -2,7 +2,8 @@ import type { BookingDetail, CancelBookingResponse, CreateBookingRequest } from 
 
 export interface AdminBookingsParams {
   organizerKeyword?: string
-  date?: string
+  fromDate?: string
+  toDate?: string
   status?: BookingDetail['displayStatus'] | 'CANCELLED'
 }
 import type { Room } from '@/types/room'

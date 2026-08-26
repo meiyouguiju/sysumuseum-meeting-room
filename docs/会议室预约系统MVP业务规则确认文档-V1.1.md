@@ -169,7 +169,7 @@
 ### 9.3 列表、刷新与导出
 
 - “我的预约”包含未来、已结束和已取消预约。
-- V1.1 不提供通用全文搜索、会议室筛选或主题搜索；“我的预约”支持 status/date 服务端筛选，管理员预约支持 organizerKeyword/date/status 服务端筛选。
+- V1.1.1 不提供通用全文搜索、会议室筛选或主题搜索；“我的预约”支持 status/date 服务端筛选，管理员预约支持 organizerKeyword/fromDate/toDate/status 服务端筛选。管理员 legacy date 仅为兼容参数，且不得与 fromDate/toDate 同时使用。
 - MVP 不使用 WebSocket，也不按固定频率自动刷新。
 - 在日期切换、创建成功、修改成功、取消成功和预约冲突后，前端必须重新获取当前日程数据。
 - MVP 提供管理员预约记录导出功能；导出范围、字段和文件格式由管理员页面固定提供，不增加复杂自定义报表。
@@ -237,7 +237,7 @@
 | 管理员 | 可管理会议室、修改/取消任意预约；改/取消他人预约必须填写原因；不允许代订 |
 | 数据可见性 | 可看他人姓名和完整主题；参会人员仅预约人和管理员可见 |
 | 我的预约筛选 | 支持 status/date 服务端筛选，筛选后分页 |
-| 管理员筛选与 CSV | 支持 organizerKeyword/date/status；CSV 使用当前筛选条件 |
+| 管理员筛选与 CSV | 支持 organizerKeyword/fromDate/toDate/status；CSV 使用当前筛选条件 |
 | 刷新 | 不用 WebSocket；日期切换及操作成功/冲突后重新获取日程 |
 | 幂等 | 严格幂等；24 小时有效；相同键相同请求返回首次结果，不同请求拒绝 |
 | 超时 | 先按原 `Idempotency-Key` 查询；无法确认则提示结果待确认并允许重新查询 |
@@ -271,6 +271,6 @@
 
 创建预约允许当前所在 30 分钟槽。最早 startTime 为服务端处理时刻向下取整的 30 分钟边界；早于该边界禁止。POST 处理时必须重新校验，表单打开时合法不构成提交时豁免。成功时已跨入预约区间即为 IN_PROGRESS，既有进行中修改/取消规则不变。
 
-管理员列表支持 organizerKeyword/date/status，全部先筛选后分页。CSV 使用同一筛选条件并导出全部命中数据，不受 page/size 影响。新前端禁止使用 fromDate/toDate；后端保留兼容，date 与 fromDate/toDate 同时提供必须为参数校验错误。
+管理员列表支持 organizerKeyword/fromDate/toDate/status，全部先筛选后分页。CSV 使用同一筛选条件并导出全部命中数据，不受 page/size 影响。V1.1.1 前端使用 fromDate/toDate；date 仅后端兼容，且与 fromDate/toDate 同时提供必须为参数校验错误。
 
 除上述变化外，30 分钟粒度、today 至 today+13、重点时段、周末/午休/17:30 后预约、30 分钟至 5 小时、不跨日、严格 Idempotency-Key、停用会议室、隐私、version 乐观锁、管理员原因必填和无 WebSocket 保持不变。

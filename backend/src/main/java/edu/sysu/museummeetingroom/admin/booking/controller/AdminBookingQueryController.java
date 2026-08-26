@@ -21,7 +21,9 @@ public class AdminBookingQueryController {
             @RequestParam(required = false) Integer size,
             @RequestParam(required = false) String organizerKeyword,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
             @RequestParam(required = false) String status) {
-        return adminBookingQueryService.getBookings(page, size, organizerKeyword, date, status);
+        return adminBookingQueryService.getBookings(page, size, organizerKeyword, date, fromDate, toDate, status);
     }
 }
