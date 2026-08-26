@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import edu.sysu.museummeetingroom.booking.command.CreateBookingCommand;
 import edu.sysu.museummeetingroom.booking.dto.CreateBookingResult;
 import edu.sysu.museummeetingroom.booking.service.BookingService;
+import edu.sysu.museummeetingroom.booking.service.BookingTimeRuleValidator;
 import edu.sysu.museummeetingroom.common.exception.ApiException;
 import java.time.Clock;
 import java.time.Instant;
@@ -114,10 +115,26 @@ class BookingServiceIntegrationTest {
         assertError(commandWithRoom(DISABLED_ROOM_ID, at(11, 0), at(11, 30)), "MEETING_ROOM_DISABLED");
         assertError(command("无效", at(11, 0), at(11, 0), 1), "BOOKING_TIME_INVALID");
         assertError(command("无效", at(11, 15), at(11, 30), 1), "BOOKING_TIME_INVALID");
-        assertError(command("无效", at(10, 0), at(10, 30), 1), "BOOKING_TIME_INVALID");
+        assertError(command("无效", at(9, 30), at(10, 0), 1), "BOOKING_TIME_INVALID");
         assertError(command("跨日", at(23, 30), LocalDateTime.of(2026, 8, 23, 0, 0), 1), "BOOKING_CROSS_DAY_NOT_ALLOWED");
         assertError(command("过短", at(11, 0), at(11, 0).plusMinutes(15), 1), "BOOKING_TIME_INVALID");
         assertError(command("超长", at(11, 0), at(16, 30), 1), "BOOKING_DURATION_EXCEEDED");
+    }
+
+    @Test
+    void permitsOnlyTheCurrentHalfHourSlotOrLaterAtCreationTime() {
+        BookingTimeRuleValidator validator = new BookingTimeRuleValidator();
+        LocalDateTime day = LocalDateTime.of(2026, 8, 22, 15, 0);
+
+        validator.validate(command("15:01当前槽", day, day.plusMinutes(30), 1), day.plusMinutes(1));
+        validator.validate(command("15:29当前槽", day, day.plusMinutes(30), 1), day.plusMinutes(29));
+        validator.validate(command("15:30当前槽", day.plusMinutes(30), day.plusHours(1), 1), day.plusMinutes(30));
+        assertThatThrownBy(() -> validator.validate(
+                        command("15:30旧槽", day, day.plusMinutes(30), 1),
+                        day.plusMinutes(30)))
+                .isInstanceOf(ApiException.class)
+                .extracting(exception -> ((ApiException) exception).errorCode())
+                .isEqualTo("BOOKING_TIME_INVALID");
     }
 
     @Test

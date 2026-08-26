@@ -18,7 +18,8 @@ public class BookingTimeRuleValidator {
         LocalDateTime startTime = command.startTime();
         LocalDateTime endTime = command.endTime();
         if (startTime == null || endTime == null || !startTime.isBefore(endTime)
-                || !isSlotBoundary(startTime) || !isSlotBoundary(endTime) || !startTime.isAfter(now)) {
+                || !isSlotBoundary(startTime) || !isSlotBoundary(endTime)
+                || startTime.isBefore(floorToSlotBoundary(now))) {
             throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "BOOKING_TIME_INVALID", "预约时间不符合规则。");
         }
         if (!startTime.toLocalDate().equals(endTime.toLocalDate())) {
@@ -39,5 +40,9 @@ public class BookingTimeRuleValidator {
 
     private boolean isSlotBoundary(LocalDateTime time) {
         return time.getMinute() % SLOT_MINUTES == 0 && time.getSecond() == 0 && time.getNano() == 0;
+    }
+
+    private LocalDateTime floorToSlotBoundary(LocalDateTime time) {
+        return time.withMinute(time.getMinute() / SLOT_MINUTES * SLOT_MINUTES).withSecond(0).withNano(0);
     }
 }

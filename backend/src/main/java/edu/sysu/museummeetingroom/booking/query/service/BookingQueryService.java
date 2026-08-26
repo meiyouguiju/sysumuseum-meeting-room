@@ -3,12 +3,14 @@ package edu.sysu.museummeetingroom.booking.query.service;
 import edu.sysu.museummeetingroom.auth.CurrentUser;
 import edu.sysu.museummeetingroom.auth.CurrentUserProvider;
 import edu.sysu.museummeetingroom.booking.query.BookingDisplayStatusResolver;
+import edu.sysu.museummeetingroom.booking.query.BookingListFilter;
 import edu.sysu.museummeetingroom.booking.query.dto.BookingDetailResponse;
 import edu.sysu.museummeetingroom.booking.query.dto.MyBookingsPageResponse;
 import edu.sysu.museummeetingroom.booking.query.mapper.BookingDetailRow;
 import edu.sysu.museummeetingroom.booking.query.mapper.BookingQueryMapper;
 import edu.sysu.museummeetingroom.common.exception.ApiException;
 import java.time.Clock;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -37,18 +39,19 @@ public class BookingQueryService {
         return toResponse(booking, currentTime());
     }
 
-    public MyBookingsPageResponse getMyBookings(Integer page, Integer size) {
+    public MyBookingsPageResponse getMyBookings(Integer page, Integer size, String status, LocalDate date) {
         CurrentUser currentUser = currentUserProvider.currentUser();
         int resolvedPage = page == null ? DEFAULT_PAGE : page;
         int resolvedSize = size == null ? DEFAULT_SIZE : size;
         validatePage(resolvedPage, resolvedSize);
 
-        long total = bookingQueryMapper.countByOrganizer(currentUser.userId());
+        LocalDateTime now = currentTime();
+        BookingListFilter filter = BookingListFilter.forMyBookings(status, date, now);
+        long total = bookingQueryMapper.countByOrganizer(currentUser.userId(), filter);
         int totalPages = totalPages(total, resolvedSize);
         int offset = (resolvedPage - 1) * resolvedSize;
-        LocalDateTime now = currentTime();
         List<BookingDetailResponse> items = bookingQueryMapper.findByOrganizer(
-                        currentUser.userId(), resolvedSize, offset)
+                        currentUser.userId(), filter, resolvedSize, offset)
                 .stream()
                 .map(booking -> toResponse(booking, now))
                 .toList();

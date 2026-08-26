@@ -95,6 +95,8 @@ class ReadOnlyApiIntegrationTest {
                 .andExpect(jsonPath("$.bookings[?(@.subject == '未来会议')].displayStatus").value("UPCOMING"))
                 .andExpect(jsonPath("$.bookings[?(@.subject == '进行中会议')].displayStatus").value("IN_PROGRESS"))
                 .andExpect(jsonPath("$.bookings[?(@.subject == '已结束会议')].displayStatus").value("ENDED"))
+                .andExpect(jsonPath("$.bookings[?(@.subject == '未来会议')].isMine").value(true))
+                .andExpect(jsonPath("$.bookings[?(@.subject == '其他用户会议')].isMine").value(false))
                 .andExpect(jsonPath("$.bookings[?(@.subject == '已取消会议')]").isEmpty())
                 .andExpect(jsonPath("$.bookings[0].participantsText").doesNotExist())
                 .andExpect(jsonPath("$.bookings[0].description").doesNotExist())
@@ -193,6 +195,32 @@ class ReadOnlyApiIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("REQUEST_VALIDATION_ERROR"));
         mockMvc.perform(get("/api/v1/me/bookings").param("page", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("REQUEST_VALIDATION_ERROR"));
+    }
+
+    @Test
+    void myBookingsFiltersByDerivedStatusAndDateBeforePagination() throws Exception {
+        mockMvc.perform(get("/api/v1/me/bookings")
+                        .param("status", "UPCOMING")
+                        .param("date", DAY)
+                        .param("page", "1")
+                        .param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(1))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(920001));
+        mockMvc.perform(get("/api/v1/me/bookings").param("status", "IN_PROGRESS"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(920002));
+        mockMvc.perform(get("/api/v1/me/bookings").param("status", "ENDED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].id").value(920003));
+        mockMvc.perform(get("/api/v1/me/bookings").param("status", "CANCELLED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].id").value(920004));
+        mockMvc.perform(get("/api/v1/me/bookings").param("status", "ACTIVE"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("REQUEST_VALIDATION_ERROR"));
     }

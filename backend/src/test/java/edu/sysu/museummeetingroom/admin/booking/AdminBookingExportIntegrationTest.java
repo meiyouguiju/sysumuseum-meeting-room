@@ -57,7 +57,7 @@ class AdminBookingExportIntegrationTest {
                 INSERT INTO meeting_room(id, name, location, capacity, status, sort_order)
                 VALUES (988010, '导出测试会议室', '测试地点', 20, 'ENABLED', 1)
                 """);
-        insertBooking(988101L, "EXPORT-988101", "普通主题", "2026-08-24 00:00:00", "ACTIVE", null);
+        insertBooking(988101L, "EXPORT-988101", "普通主题", "2026-08-24 11:00:00", "ACTIVE", null);
         insertBooking(988102L, "EXPORT-988102", "=危险,\"主题\"", "2026-08-24 23:59:59", "CANCELLED", "换行\r\n原因");
         insertBooking(988103L, "EXPORT-988103", "范围外主题", "2026-08-25 00:00:00", "ACTIVE", null);
     }
@@ -68,7 +68,7 @@ class AdminBookingExportIntegrationTest {
     }
 
     @Test
-    void exportsDefaultTodayWithFixedColumnsBomEscapingAndInclusiveDateBoundary() throws Exception {
+    void exportsAllRecordsWithoutAnImplicitTodayDateLimit() throws Exception {
         MvcResult result = mockMvc.perform(get("/api/v1/admin/bookings/export"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "text/csv;charset=UTF-8"))
@@ -83,7 +83,7 @@ class AdminBookingExportIntegrationTest {
                 .contains("EXPORT-988101")
                 .contains("\"'=危险,\"\"主题\"\"\"")
                 .contains("\"换行\r\n原因\"")
-                .doesNotContain("EXPORT-988103");
+                .contains("EXPORT-988103");
     }
 
     @Test
@@ -104,6 +104,50 @@ class AdminBookingExportIntegrationTest {
         mockMvc.perform(get("/api/v1/admin/bookings/export").param("fromDate", "2026/08/24"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("REQUEST_VALIDATION_ERROR"));
+    }
+
+    @Test
+    void exportsAllRecordsUsingTheSameV11FiltersAsTheAdminList() throws Exception {
+        MvcResult result = mockMvc.perform(get("/api/v1/admin/bookings/export")
+                        .param("organizerKeyword", "导出预约人")
+                        .param("date", "2026-08-24")
+                        .param("status", "CANCELLED"))
+                .andExpect(status().isOk())
+                .andReturn();
+        String csv = result.getResponse().getContentAsString(StandardCharsets.UTF_8);
+        assertThat(csv).contains("EXPORT-988102").doesNotContain("EXPORT-988101", "EXPORT-988103");
+
+        mockMvc.perform(get("/api/v1/admin/bookings/export")
+                        .param("date", "2026-08-24")
+                        .param("fromDate", "2026-08-24"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("REQUEST_VALIDATION_ERROR"));
+    }
+
+    @Test
+    void statusAndOrganizerFiltersExportAllMatchingDatesLikeTheAdminList() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/bookings")
+                        .param("organizerKeyword", "导出预约人")
+                        .param("status", "UPCOMING")
+                        .param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(2))
+                .andExpect(jsonPath("$.items[?(@.id == 988101)]").exists())
+                .andExpect(jsonPath("$.items[?(@.id == 988103)]").exists());
+
+        MvcResult statusResult = mockMvc.perform(get("/api/v1/admin/bookings/export")
+                        .param("status", "UPCOMING"))
+                .andExpect(status().isOk())
+                .andReturn();
+        String statusCsv = statusResult.getResponse().getContentAsString(StandardCharsets.UTF_8);
+        assertThat(statusCsv).contains("EXPORT-988101", "EXPORT-988103").doesNotContain("EXPORT-988102");
+
+        MvcResult organizerResult = mockMvc.perform(get("/api/v1/admin/bookings/export")
+                        .param("organizerKeyword", "导出预约人"))
+                .andExpect(status().isOk())
+                .andReturn();
+        String organizerCsv = organizerResult.getResponse().getContentAsString(StandardCharsets.UTF_8);
+        assertThat(organizerCsv).contains("EXPORT-988101", "EXPORT-988102", "EXPORT-988103");
     }
 
     private void insertBooking(

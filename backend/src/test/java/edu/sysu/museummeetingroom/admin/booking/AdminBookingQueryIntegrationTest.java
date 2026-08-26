@@ -118,6 +118,41 @@ class AdminBookingQueryIntegrationTest {
                 .andExpect(jsonPath("$.items").isEmpty());
     }
 
+    @Test
+    void filtersByOrganizerDateAndDerivedStatusBeforePagination() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/bookings")
+                        .param("organizerKeyword", " 列表预约人 ")
+                        .param("date", "2026-08-22")
+                        .param("status", "UPCOMING")
+                        .param("page", "1")
+                        .param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(2))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.items[0].id").value(984102));
+        mockMvc.perform(get("/api/v1/admin/bookings").param("status", "IN_PROGRESS"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[?(@.id == 984103)].displayStatus").value("IN_PROGRESS"));
+        mockMvc.perform(get("/api/v1/admin/bookings").param("status", "ACTIVE"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("REQUEST_VALIDATION_ERROR"));
+    }
+
+    @Test
+    void scheduleMarksOnlyTheAdministratorsOwnBookingAsMine() throws Exception {
+        jdbcTemplate.update("""
+                INSERT INTO booking(id, booking_no, room_id, organizer_user_id, organizer_name_snapshot, subject,
+                    start_time, end_time, status, version)
+                VALUES (984106, 'ADMIN-LIST-984106', ?, ?, '列表管理员', '管理员本人预约',
+                    '2026-08-22 13:00:00', '2026-08-22 13:30:00', 'ACTIVE', 1)
+                """, ROOM_ID, ADMIN_ID);
+
+        mockMvc.perform(get("/api/v1/schedules").param("date", "2026-08-22"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.bookings[?(@.id == 984106)].isMine").value(true))
+                .andExpect(jsonPath("$.bookings[?(@.id == 984101)].isMine").value(false));
+    }
+
     private void assertFixtureSummary(long bookingId, String displayStatus) throws Exception {
         mockMvc.perform(get("/api/v1/admin/bookings")
                         .param("page", String.valueOf(positionOf(bookingId) + 1))
@@ -151,9 +186,9 @@ class AdminBookingQueryIntegrationTest {
     }
 
     private void removeFixture() {
-        jdbcTemplate.update("DELETE FROM booking_audit_log WHERE booking_id BETWEEN 984101 AND 984105");
-        jdbcTemplate.update("DELETE FROM booking_slot WHERE booking_id BETWEEN 984101 AND 984105");
-        jdbcTemplate.update("DELETE FROM booking WHERE id BETWEEN 984101 AND 984105");
+        jdbcTemplate.update("DELETE FROM booking_audit_log WHERE booking_id BETWEEN 984101 AND 984106");
+        jdbcTemplate.update("DELETE FROM booking_slot WHERE booking_id BETWEEN 984101 AND 984106");
+        jdbcTemplate.update("DELETE FROM booking WHERE id BETWEEN 984101 AND 984106");
         jdbcTemplate.update("DELETE FROM meeting_room WHERE id = ?", ROOM_ID);
         jdbcTemplate.update("DELETE FROM sys_user WHERE id IN (?, ?)", ADMIN_ID, OWNER_ID);
     }

@@ -8,7 +8,7 @@ import org.apache.ibatis.annotations.Select;
 @Mapper
 public interface ScheduleMapper {
     @Select("""
-            SELECT id, room_id, subject, organizer_name_snapshot AS organizer_name, start_time, end_time
+            SELECT id, room_id, organizer_user_id, subject, organizer_name_snapshot AS organizer_name, start_time, end_time
             FROM booking
             WHERE status = 'ACTIVE' AND start_time >= #{dayStart} AND start_time < #{nextDayStart}
             ORDER BY start_time ASC, room_id ASC, id ASC

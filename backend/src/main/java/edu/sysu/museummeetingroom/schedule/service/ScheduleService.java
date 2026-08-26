@@ -2,6 +2,8 @@ package edu.sysu.museummeetingroom.schedule.service;
 
 import edu.sysu.museummeetingroom.common.config.TimeConfiguration;
 import edu.sysu.museummeetingroom.common.exception.ApiException;
+import edu.sysu.museummeetingroom.auth.CurrentUser;
+import edu.sysu.museummeetingroom.auth.CurrentUserProvider;
 import edu.sysu.museummeetingroom.booking.query.BookingDisplayStatusResolver;
 import edu.sysu.museummeetingroom.room.mapper.MeetingRoomMapper;
 import edu.sysu.museummeetingroom.room.mapper.RoomRow;
@@ -23,10 +25,12 @@ public class ScheduleService {
 
     private final MeetingRoomMapper meetingRoomMapper;
     private final ScheduleMapper scheduleMapper;
+    private final CurrentUserProvider currentUserProvider;
     private final BookingDisplayStatusResolver bookingDisplayStatusResolver;
     private final Clock businessClock;
 
     public ScheduleResponse getSchedule(LocalDate date) {
+        CurrentUser currentUser = currentUserProvider.currentUser();
         LocalDate today = LocalDate.now(businessClock);
         if (date.isAfter(today.plusDays(13))) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "REQUEST_VALIDATION_ERROR", "查询日期超出未来14天范围。");
@@ -40,15 +44,20 @@ public class ScheduleService {
         return new ScheduleResponse(date, TimeConfiguration.BUSINESS_ZONE.getId(), 30,
                 new ScheduleResponse.FocusWindow("08:30", "17:30"),
                 rooms.stream().map(room -> new ScheduleResponse.ScheduleRoom(room.id(), room.name(), room.status(), room.capacity())).toList(),
-                bookings.stream().map(booking -> toBooking(booking, now)).toList(),
+                bookings.stream().map(booking -> toBooking(booking, currentUser, now)).toList(),
                 heldSlots.stream().map(slot -> new ScheduleResponse.UnavailableSlot(slot.roomId(), slot.slotStart(),
                         "CANCELLED_CURRENT_SLOT_HOLD")).toList());
     }
 
-    private ScheduleResponse.ScheduleBooking toBooking(ScheduleBookingRow booking, LocalDateTime now) {
+    private ScheduleResponse.ScheduleBooking toBooking(
+            ScheduleBookingRow booking,
+            CurrentUser currentUser,
+            LocalDateTime now) {
         String displayStatus = bookingDisplayStatusResolver.resolve(
                 "ACTIVE", booking.startTime(), booking.endTime(), now);
-        return new ScheduleResponse.ScheduleBooking(booking.id(), booking.roomId(), booking.subject(), booking.organizerName(),
+        return new ScheduleResponse.ScheduleBooking(
+                booking.id(), booking.roomId(), booking.subject(), booking.organizerName(),
+                currentUser.userId().equals(booking.organizerUserId()),
                 booking.startTime(), booking.endTime(), displayStatus);
     }
 }

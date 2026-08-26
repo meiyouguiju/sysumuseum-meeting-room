@@ -8,7 +8,7 @@ public record ScheduleResponse(LocalDate date, String timeZone, int slotMinutes,
         List<ScheduleRoom> rooms, List<ScheduleBooking> bookings, List<UnavailableSlot> unavailableSlots) {
     public record FocusWindow(String start, String end) {}
     public record ScheduleRoom(Long id, String name, String status, Integer capacity) {}
-    public record ScheduleBooking(Long id, Long roomId, String subject, String organizerName,
+    public record ScheduleBooking(Long id, Long roomId, String subject, String organizerName, boolean isMine,
             LocalDateTime startTime, LocalDateTime endTime, String displayStatus) {}
     public record UnavailableSlot(Long roomId, LocalDateTime slotStart, String reason) {}
 }

@@ -22,9 +22,12 @@ public class AdminBookingExportController {
 
     @GetMapping("/api/v1/admin/bookings/export")
     public ResponseEntity<byte[]> export(
+            @RequestParam(required = false) String organizerKeyword,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) String status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate) {
-        byte[] csv = adminBookingExportService.export(fromDate, toDate);
+        byte[] csv = adminBookingExportService.export(organizerKeyword, date, status, fromDate, toDate);
         ContentDisposition contentDisposition = ContentDisposition.attachment()
                 .filename("booking-records.csv")
                 .build();

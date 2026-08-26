@@ -7,8 +7,10 @@ import edu.sysu.museummeetingroom.admin.booking.mapper.AdminBookingQueryMapper;
 import edu.sysu.museummeetingroom.auth.CurrentUser;
 import edu.sysu.museummeetingroom.auth.CurrentUserProvider;
 import edu.sysu.museummeetingroom.booking.query.BookingDisplayStatusResolver;
+import edu.sysu.museummeetingroom.booking.query.BookingListFilter;
 import edu.sysu.museummeetingroom.common.exception.ApiException;
 import java.time.Clock;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -28,16 +30,22 @@ public class AdminBookingQueryService {
     private final BookingDisplayStatusResolver bookingDisplayStatusResolver;
     private final Clock businessClock;
 
-    public AdminBookingsPageResponse getBookings(Integer page, Integer size) {
+    public AdminBookingsPageResponse getBookings(
+            Integer page,
+            Integer size,
+            String organizerKeyword,
+            LocalDate date,
+            String status) {
         requireAdmin();
         int resolvedPage = page == null ? DEFAULT_PAGE : page;
         int resolvedSize = size == null ? DEFAULT_SIZE : size;
         validatePage(resolvedPage, resolvedSize);
 
-        long total = adminBookingQueryMapper.countAll();
-        long offset = ((long) resolvedPage - 1) * resolvedSize;
         LocalDateTime now = LocalDateTime.now(businessClock);
-        List<AdminBookingListItemResponse> items = adminBookingQueryMapper.findPage(resolvedSize, offset)
+        BookingListFilter filter = BookingListFilter.forAdminBookings(organizerKeyword, status, date, now);
+        long total = adminBookingQueryMapper.countAll(filter);
+        long offset = ((long) resolvedPage - 1) * resolvedSize;
+        List<AdminBookingListItemResponse> items = adminBookingQueryMapper.findPage(filter, resolvedSize, offset)
                 .stream()
                 .map(row -> toResponse(row, now))
                 .toList();
