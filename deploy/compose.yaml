@@ -25,8 +25,8 @@ services:
 
   backend:
     build:
-      context: ..
-      dockerfile: deploy/backend/Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     restart: unless-stopped
     environment:
       DB_HOST: mysql
@@ -49,8 +49,8 @@ services:
 
   frontend:
     build:
-      context: ..
-      dockerfile: deploy/frontend/Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
     restart: unless-stopped
     depends_on:
       backend:

@@ -15,6 +15,7 @@ target/
 !*.example
 application-local-secret.yml
 application-local-secret.yaml
+deploy/artifacts/
 
 # Logs
 *.log

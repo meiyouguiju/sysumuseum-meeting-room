@@ -2,15 +2,40 @@
 
 本目录用于在 DSM 7.2.2 的 Container Manager 上以 Docker Compose 部署局域网试运行版本。它启动 MySQL、Spring Boot 后端和 Nginx/Vue 前端；浏览器只访问 Nginx。
 
-## 准备目录与环境变量
+## 在开发电脑构建成品
 
-Docker 构建需要读取 `backend/` 与 `frontend/`，因此将完整项目目录（包含 `deploy/`）复制到群晖，例如：
+群晖只运行 Java、Nginx 和 MySQL，不执行 Maven 或 npm 构建。先在开发电脑完成构建：
+
+```powershell
+cd backend
+.\mvnw.cmd clean package -DskipTests
+
+cd ..\frontend
+npm run build
+```
+
+将后端 `target` 中生成的可执行 jar 复制为：
+
+```text
+deploy/artifacts/backend/app.jar
+```
+
+将 `frontend/dist` 整个目录复制为：
+
+```text
+deploy/artifacts/frontend/dist
+```
+
+`deploy/artifacts/` 仅保存本地构建成品，已被 Git 忽略，不应提交。
+
+## 准备群晖目录与环境变量
+
+将 `deploy/`、`data/` 和 `logs/` 上传或同步到群晖，例如：
 
 ```text
 meeting-room/
-├── backend/
-├── frontend/
 ├── deploy/
+│   └── artifacts/
 ├── data/mysql/
 └── logs/backend/
 ```
@@ -41,6 +66,6 @@ MySQL 与后端不映射宿主机端口；仅 Nginx 暴露 8088。
 
 Container Manager 可查看所有容器日志。后端持久化日志位于 `meeting-room/logs/backend`；生产 profile 会滚动压缩历史日志。首次部署前必须确保该目录允许 backend 容器内的 `app` 用户写入；若启动日志出现 `Permission denied /app/logs`，请先检查 Synology 共享文件夹和目录权限。不要通过 Dockerfile 写死 Synology UID/GID 或使用 chmod 777。
 
-停止项目可在 Container Manager 的项目页面执行停止。更新代码后，将完整项目目录同步到 NAS，在项目页面重新构建并启动；MySQL 数据和后端日志保留在 `data/mysql` 与 `logs/backend` 中。
+停止项目可在 Container Manager 的项目页面执行停止。更新代码后，在开发电脑重新构建并同步 `deploy/artifacts/` 到 NAS，再在项目页面重新构建并启动；MySQL 数据和后端日志保留在 `data/mysql` 与 `logs/backend` 中。
 
 本部署仅面向局域网试运行。当前身份为 `LOCAL_USER_ID=3`；Cloudflare、SSO 和多用户临时身份将于后续阶段单独实现。
