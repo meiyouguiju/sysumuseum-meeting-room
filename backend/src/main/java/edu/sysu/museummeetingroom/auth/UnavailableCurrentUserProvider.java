@@ -6,7 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile("!local")
+@Profile("legacy-no-auth")
 public class UnavailableCurrentUserProvider implements CurrentUserProvider {
     @Override
     public CurrentUser currentUser() {

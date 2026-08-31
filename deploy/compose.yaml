@@ -35,8 +35,7 @@ services:
       DB_USERNAME: ${MYSQL_USER}
       DB_PASSWORD: ${MYSQL_PASSWORD}
       SERVER_PORT: ${SERVER_PORT:-8080}
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-local,prod}
-      LOCAL_USER_ID: ${LOCAL_USER_ID:-3}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       LOG_DIR: ${LOG_DIR:-/app/logs}
       TZ: Asia/Shanghai
     depends_on:

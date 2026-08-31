@@ -21,7 +21,7 @@ class SchemaMigrationIntegrationTest {
     void flywayCreatesAllCoreTables() {
         Integer tableCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM information_schema.tables "
-                        + "WHERE table_schema = DATABASE() AND table_name IN (?, ?, ?, ?, ?, ?, ?)",
+                        + "WHERE table_schema = DATABASE() AND table_name IN (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 Integer.class,
                 "sys_user",
                 "meeting_room",
@@ -29,8 +29,10 @@ class SchemaMigrationIntegrationTest {
                 "booking_slot",
                 "booking_audit_log",
                 "idempotency_record",
-                "flyway_schema_history");
+                "flyway_schema_history",
+                "SPRING_SESSION",
+                "SPRING_SESSION_ATTRIBUTES");
 
-        assertThat(tableCount).isEqualTo(7);
+        assertThat(tableCount).isEqualTo(9);
     }
 }

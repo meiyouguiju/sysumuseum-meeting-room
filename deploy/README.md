@@ -48,7 +48,7 @@ cp .env.example .env
 
 `.env` 不应提交到 Git。不要将密码写入 Compose 文件或 Dockerfile。
 
-本次试运行在 SSO 接入前使用 `local,prod` profile：`local` 提供临时测试身份，`prod` 同时启用文件日志。`LOCAL_USER_ID=3` 是整个后端进程共享的身份，因此当前阶段所有访问者都会被视为同一个用户。正式 SSO 上线前必须移除 `local` profile 和 `LOCAL_USER_ID`。
+本次试运行使用 `prod` profile：后端启用姓名加四位 PIN 的真实登录，并同时启用文件日志。NAS 环境不得设置 `LOCAL_USER_ID`，该变量只保留给开发电脑的 `local` profile 使用。所有访问者都必须使用其预先配置的姓名和 PIN 登录。
 
 ## Container Manager 启动
 
@@ -68,4 +68,4 @@ Container Manager 可查看所有容器日志。后端持久化日志位于 `mee
 
 停止项目可在 Container Manager 的项目页面执行停止。更新代码后，在开发电脑重新构建并同步 `deploy/artifacts/` 到 NAS，再在项目页面重新构建并启动；MySQL 数据和后端日志保留在 `data/mysql` 与 `logs/backend` 中。
 
-本部署仅面向局域网试运行。当前身份为 `LOCAL_USER_ID=3`；Cloudflare、SSO 和多用户临时身份将于后续阶段单独实现。
+本部署首先面向局域网试运行；浏览器使用姓名加四位 PIN 登录。Cloudflare 的外网访问和正式 SSO 将按后续部署计划单独配置。

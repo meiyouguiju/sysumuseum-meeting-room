@@ -6,6 +6,7 @@ import { ElMessage } from 'element-plus'
 import ErrorState from '@/components/common/ErrorState.vue'
 import LoadingState from '@/components/common/LoadingState.vue'
 import CreateReservationDrawer from '@/components/reservation/CreateReservationDrawer.vue'
+import BookingNotificationDialog from '@/components/reservation/BookingNotificationDialog.vue'
 import MyBookingDetailDrawer from '@/components/reservation/MyBookingDetailDrawer.vue'
 import DesktopScheduleGrid from '@/components/schedule/DesktopScheduleGrid.vue'
 import MobileScheduleTimeline from '@/components/schedule/MobileScheduleTimeline.vue'
@@ -14,7 +15,7 @@ import { useMobileBreakpoint } from '@/composables/useMobileBreakpoint'
 import { useCreateBooking, type CreateBookingSubmission } from '@/composables/useCreateBooking'
 import { scheduleQueryOptions } from '@/queries/schedule'
 import { scheduleQueryKey } from '@/queries/schedule'
-import type { CreateBookingRequest } from '@/types/booking'
+import type { CreateBookingRequest, CreateBookingResponse } from '@/types/booking'
 import type { ScheduleBooking, ScheduleRoom } from '@/types/schedule'
 import type { DaySlot } from '@/utils/schedule'
 import { formatTimeRange, todayInShanghai } from '@/utils/schedule'
@@ -26,6 +27,13 @@ const selectedBooking = ref<ScheduleBooking>()
 const selectedMyBookingId = ref<number>()
 const selectedEmptySlot = ref<{ room: ScheduleRoom; slot: DaySlot }>()
 const selectedMobileRoomId = ref<number>()
+const createdBooking = ref<CreateBookingResponse>()
+const notificationVisible = computed({
+  get: () => createdBooking.value !== undefined,
+  set: (visible: boolean) => {
+    if (!visible) createdBooking.value = undefined
+  },
+})
 const { isMobile } = useMobileBreakpoint()
 const {
   hasUnknownResult,
@@ -106,7 +114,7 @@ function selectBooking(booking: ScheduleBooking) {
 
 async function handleCreateSubmission(result: CreateBookingSubmission) {
   if (result.kind === 'succeeded') {
-    ElMessage.success('预约成功')
+    createdBooking.value = result.response
     result.response.warnings.forEach((warning) => ElMessage.warning(warning.message))
     createDrawerVisible.value = false
     await Promise.all([
@@ -214,6 +222,7 @@ async function resolveCreateBookingResult() {
       </el-descriptions>
     </el-drawer>
     <MyBookingDetailDrawer v-model="myBookingDrawerVisible" :booking-id="selectedMyBookingId" />
+    <BookingNotificationDialog v-model="notificationVisible" :booking="createdBooking" />
     <CreateReservationDrawer
       v-if="selectedEmptySlot"
       v-model="createDrawerVisible"

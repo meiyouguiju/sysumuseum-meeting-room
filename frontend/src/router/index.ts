@@ -6,6 +6,7 @@ import { currentUserQueryOptions } from '@/queries/currentUser'
 import AdminReservationsView from '@/views/admin/AdminReservationsView.vue'
 import AdminRoomsView from '@/views/admin/AdminRoomsView.vue'
 import MyReservationsView from '@/views/MyReservationsView.vue'
+import LoginView from '@/views/LoginView.vue'
 import ScheduleView from '@/views/ScheduleView.vue'
 
 const queryClient = new QueryClient()
@@ -13,9 +14,11 @@ const queryClient = new QueryClient()
 const router = createRouter({
   history: createWebHistory(),
   routes: [
+    { path: '/login', component: LoginView, meta: { public: true } },
     {
       path: '/',
       component: AppLayout,
+      meta: { requiresAuth: true },
       children: [
         { path: '', redirect: '/schedule' },
         { path: 'schedule', component: ScheduleView },
@@ -33,13 +36,16 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
-  if (!to.meta.requiresAdmin) return true
+  if (to.meta.public) {
+    return true
+  }
 
   try {
     const currentUser = await queryClient.ensureQueryData(currentUserQueryOptions())
-    return currentUser.roleCode === 'ADMIN' ? true : '/schedule'
+    if (to.meta.requiresAdmin && currentUser.roleCode !== 'ADMIN') return '/schedule'
+    return true
   } catch {
-    return '/schedule'
+    return { path: '/login', query: { redirect: to.fullPath } }
   }
 })
 

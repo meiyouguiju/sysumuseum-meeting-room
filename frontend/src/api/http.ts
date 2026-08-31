@@ -4,14 +4,23 @@ import { ApiError, type ApiErrorResponse } from '@/types/api'
 
 export const http = axios.create({
   baseURL: '/api/v1',
+  withCredentials: true,
   headers: { Accept: 'application/json' },
 })
+
+function isLoginRequest(url: string | undefined): boolean {
+  return url === '/auth/login'
+}
 
 http.interceptors.response.use(
   (response) => response,
   (error: AxiosError<ApiErrorResponse>) => {
     const response = error.response
     const body = response?.data
+
+    if (response?.status === 401 && !isLoginRequest(error.config?.url)) {
+      window.dispatchEvent(new CustomEvent('auth:unauthenticated'))
+    }
 
     return Promise.reject(
       new ApiError({
@@ -26,5 +35,3 @@ http.interceptors.response.use(
     )
   },
 )
-
-// 未来 SSO 接入时，可在这里集中扩展 401/403 行为；F0 不做登录跳转。

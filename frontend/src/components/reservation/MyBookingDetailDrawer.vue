@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 import { cancelMyBooking, getBookingDetail, updateMyBooking } from '@/api/bookings'
+import { copyText, buildWeChatNotification } from '@/utils/wechatNotification'
 import ErrorState from '@/components/common/ErrorState.vue'
 import LoadingState from '@/components/common/LoadingState.vue'
 import ReservationForm from '@/components/reservation/ReservationForm.vue'
@@ -73,6 +74,14 @@ function beginEdit() {
   if (!booking.value) return
   editSnapshot.value = cloneBooking(booking.value)
   isEditing.value = true
+}
+async function copyNotification(value: BookingDetail) {
+  try {
+    await copyText(buildWeChatNotification(value))
+    ElMessage.success('已复制，可直接粘贴到微信群')
+  } catch {
+    ElMessage.error('复制失败，请手动选择预约信息。')
+  }
 }
 async function refreshRelated(date: string, id: number) {
   await Promise.all([
@@ -205,6 +214,7 @@ async function cancelBooking() {
         >
       </el-descriptions>
       <div class="actions">
+        <el-button @click="copyNotification(booking)">复制微信群通知</el-button>
         <el-button v-if="canEdit(booking)" type="primary" @click="beginEdit">修改预约</el-button>
         <el-button
           v-if="canCancel(booking)"
