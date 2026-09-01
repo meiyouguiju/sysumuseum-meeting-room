@@ -8,6 +8,7 @@ import { getBookingDetail } from '@/api/bookings'
 import AdminBookingEditForm from '@/components/admin/AdminBookingEditForm.vue'
 import ErrorState from '@/components/common/ErrorState.vue'
 import LoadingState from '@/components/common/LoadingState.vue'
+import { useDrawerHistory } from '@/composables/useDrawerHistory'
 import { adminBookingsQueryOptions } from '@/queries/adminBookings'
 import { bookingDetailQueryKey, bookingDetailQueryOptions } from '@/queries/bookings'
 import { currentUserQueryOptions } from '@/queries/currentUser'
@@ -22,6 +23,7 @@ import type {
 import { ApiError } from '@/types/api'
 import type { BookingDetail } from '@/types/booking'
 import { formatTimeRange } from '@/utils/schedule'
+import { displayOptionalDetailValue } from '@/utils/bookingDetail'
 
 const page = ref(1)
 const size = 20
@@ -56,6 +58,8 @@ const visible = computed({
     if (!value) closeDrawer()
   },
 })
+
+useDrawerHistory(visible)
 
 watch(filters, () => {
   page.value = 1
@@ -251,6 +255,7 @@ function resetFilters() {
         class="filter-date"
         type="daterange"
         value-format="YYYY-MM-DD"
+        :editable="false"
         clearable
         range-separator="至"
         start-placeholder="开始日期"
@@ -367,13 +372,13 @@ function resetFilters() {
           }}</el-descriptions-item
           ><el-descriptions-item label="会议主题">{{ booking.subject }}</el-descriptions-item
           ><el-descriptions-item label="预计人数">{{
-            booking.attendeeCount ?? '未填写'
+            displayOptionalDetailValue(booking.attendeeCount)
           }}</el-descriptions-item
           ><el-descriptions-item label="参会人员">{{
-            booking.participantsText ?? '未填写'
+            displayOptionalDetailValue(booking.participantsText)
           }}</el-descriptions-item
           ><el-descriptions-item label="说明">{{
-            booking.description ?? '未填写'
+            displayOptionalDetailValue(booking.description)
           }}</el-descriptions-item
           ><el-descriptions-item label="时间"
             >{{ booking.startTime.slice(0, 10) }}
@@ -456,6 +461,21 @@ h1 {
     border: 1px solid #cbd5e1;
     border-radius: 8px;
     background: #fff;
+  }
+  .admin-card strong,
+  .admin-card span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .admin-card strong {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    white-space: normal;
+  }
+  .admin-card span {
+    white-space: nowrap;
   }
   .admin-card > div {
     display: flex;

@@ -7,8 +7,7 @@ import {
   buildDaySlots,
   calculateSlotSpan,
   currentMinutesInShanghai,
-  isCreatableScheduleSlot,
-  isInFocusWindow,
+  getScheduleSlotState,
   timeToSlotIndex,
   todayInShanghai,
   timeToMinutes,
@@ -34,7 +33,7 @@ const currentLineStyle = computed(() => ({
 }))
 let timer: number | undefined
 
-function bookingAt(slot: DaySlot) {
+function bookingAt(slot: DaySlot): ScheduleBooking | undefined {
   return bookings.value.find(
     (booking) => timeToSlotIndex(booking.startTime, props.schedule.slotMinutes) === slot.index,
   )
@@ -42,25 +41,14 @@ function bookingAt(slot: DaySlot) {
 function bookingSpan(booking: ScheduleBooking) {
   return calculateSlotSpan(booking.startTime, booking.endTime, props.schedule.slotMinutes)
 }
-function occupied(slot: DaySlot) {
-  return bookings.value.some((booking) => {
-    const start = timeToSlotIndex(booking.startTime, props.schedule.slotMinutes)
-    const end = timeToSlotIndex(booking.endTime, props.schedule.slotMinutes)
-    return slot.index >= start && slot.index < end
-  })
-}
-function unavailable(slot: DaySlot) {
-  return unavailableSlots.value.some(
-    (item) => timeToSlotIndex(item.slotStart, props.schedule.slotMinutes) === slot.index,
-  )
-}
-function canCreate(slot: DaySlot) {
-  return isCreatableScheduleSlot({
+function slotState(slot: DaySlot) {
+  return getScheduleSlotState({
     date: props.schedule.date,
     roomStatus: props.room.status,
     slot,
     slots: slots.value,
     slotMinutes: props.schedule.slotMinutes,
+    focusWindow: props.schedule.focusWindow,
     bookings: bookings.value,
     unavailableSlots: unavailableSlots.value,
   })
@@ -110,45 +98,40 @@ onBeforeUnmount(() => {
     <div
       v-for="slot in slots"
       :key="slot.index"
-      class="mobile-slot"
+      class="schedule-slot mobile-slot"
       :class="{
-        'is-focus': isInFocusWindow(slot, schedule.focusWindow.start, schedule.focusWindow.end),
-        'is-outside-focus': !isInFocusWindow(
-          slot,
-          schedule.focusWindow.start,
-          schedule.focusWindow.end,
-        ),
+        'is-focus': slotState(slot).isInFocusWindow,
+        'is-outside-focus': !slotState(slot).isInFocusWindow,
+        [`is-${slotState(slot).timePosition}`]: true,
+        [`is-${slotState(slot).availability}`]: true,
       }"
     >
       <span class="slot-time">{{ slot.label }}</span
       ><button
         v-if="bookingAt(slot)"
         class="mobile-booking"
-        :class="{ 'mobile-booking-mine': bookingAt(slot)?.isMine }"
+        :class="[
+          `schedule-booking--${bookingAt(slot)!.displayStatus.toLowerCase()}`,
+          { 'mobile-booking-mine': bookingAt(slot)?.isMine },
+        ]"
         :style="{ '--booking-span': bookingSpan(bookingAt(slot)!) }"
         @click="emit('selectBooking', bookingAt(slot)!)"
       >
-        <strong>{{ bookingAt(slot)?.subject }}</strong
-        ><span v-if="bookingAt(slot)?.isMine" class="mobile-mine-label">我的预约</span
-        ><span>{{ bookingAt(slot)?.organizerName }}</span
-        ><span
-          >{{ bookingAt(slot)?.startTime.slice(11, 16) }}–{{
-            bookingAt(slot)?.endTime.slice(11, 16)
-          }}</span
-        >
+        <strong>{{ bookingAt(slot)?.subject }}</strong>
+        <span v-if="bookingAt(slot)?.isMine" class="mobile-mine-label">我的预约</span>
       </button>
-      <div v-else-if="occupied(slot)" class="booking-continuation" />
-      <div v-else-if="unavailable(slot)" class="unavailable">暂不可预约</div>
+      <div v-else-if="slotState(slot).availability === 'booking'" class="booking-continuation" />
+      <div v-else-if="slotState(slot).availability === 'current-slot-hold'" class="unavailable">
+        暂不可预约
+      </div>
       <button
-        v-else-if="canCreate(slot)"
+        v-else-if="slotState(slot).isBookable"
         class="empty-slot"
         @click="emit('selectEmptySlot', room, slot)"
       >
-        空闲 · +预约
+        预约
       </button>
-      <div v-else class="empty-slot disabled">
-        {{ room.status === 'DISABLED' ? '已停用' : '空闲' }}
-      </div>
+      <div v-else class="empty-slot disabled" />
     </div>
   </div>
 </template>
@@ -167,9 +150,7 @@ onBeforeUnmount(() => {
   grid-template-columns: 64px 1fr;
   min-height: 56px;
   border-bottom: 1px solid #cbd5e1;
-}
-.is-outside-focus {
-  background: #f8fafc;
+  background: #fff;
 }
 .slot-time {
   padding: 8px;
@@ -208,17 +189,32 @@ onBeforeUnmount(() => {
   align-content: center;
   gap: 2px;
   height: calc(var(--booking-span) * 56px - 6px);
+  min-width: 0;
   padding: 8px;
   border: 0;
   border-radius: 6px;
-  color: #fff;
-  background: #2563eb;
   text-align: left;
   font: inherit;
   cursor: pointer;
 }
+.mobile-booking strong,
 .mobile-booking span {
-  font-size: 12px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  line-height: 1.2;
+}
+.mobile-booking strong {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mobile-booking span {
+  font-size: 8px;
 }
 .mobile-booking-mine {
   outline: 2px solid #047857;
@@ -226,11 +222,15 @@ onBeforeUnmount(() => {
 }
 .mobile-mine-label {
   width: fit-content;
+  max-width: 100%;
   padding: 1px 4px;
   border-radius: 3px;
   color: #fff;
   background: #047857;
+  font-size: 10px;
   font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 .mobile-current-time {
   position: absolute;

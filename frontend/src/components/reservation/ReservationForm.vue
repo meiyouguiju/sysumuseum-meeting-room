@@ -125,6 +125,8 @@ function submit() {
         v-model="form.date"
         type="date"
         value-format="YYYY-MM-DD"
+        :editable="false"
+        :clearable="false"
         :disabled="submitting" /><el-input v-else :model-value="date" disabled
     /></el-form-item>
     <div class="time-fields">

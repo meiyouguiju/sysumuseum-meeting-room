@@ -28,7 +28,7 @@ async function signOut() {
 
 <template>
   <header class="app-header">
-    <RouterLink class="brand" to="/schedule">中山大学博物馆（校史馆） · 会议室预约</RouterLink>
+    <RouterLink class="brand" to="/schedule">中山大学校史馆 · 会议室预约</RouterLink>
     <nav class="main-nav" aria-label="主导航">
       <RouterLink to="/schedule">日程</RouterLink>
       <RouterLink to="/my-reservations">我的预约</RouterLink>

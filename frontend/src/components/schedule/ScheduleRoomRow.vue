@@ -1,12 +1,7 @@
 <script setup lang="ts">
 import type { ScheduleBooking, ScheduleRoom, UnavailableSlot } from '@/types/schedule'
 import type { DaySlot } from '@/utils/schedule'
-import {
-  calculateSlotSpan,
-  isCreatableScheduleSlot,
-  isInFocusWindow,
-  timeToSlotIndex,
-} from '@/utils/schedule'
+import { calculateSlotSpan, getScheduleSlotState, timeToSlotIndex } from '@/utils/schedule'
 
 import ReservationBlock from './ReservationBlock.vue'
 import UnavailableSlotBlock from './UnavailableSlot.vue'
@@ -29,13 +24,14 @@ function gridStyle(start: number, span = 1) {
   return { gridColumn: `${start + 1} / span ${span}` }
 }
 
-function isCreatableSlot(slot: DaySlot): boolean {
-  return isCreatableScheduleSlot({
+function slotState(slot: DaySlot) {
+  return getScheduleSlotState({
     date: props.date,
     roomStatus: props.room.status,
     slot,
     slots: props.slots,
     slotMinutes: props.slotMinutes,
+    focusWindow: props.focusWindow,
     bookings: props.bookings,
     unavailableSlots: props.unavailableSlots,
   })
@@ -54,17 +50,20 @@ function isCreatableSlot(slot: DaySlot): boolean {
         <button
           v-for="slot in slots"
           :key="slot.index"
-          class="slot-cell"
+          class="schedule-slot slot-cell"
           :class="{
-            'outside-focus': !isInFocusWindow(slot, focusWindow.start, focusWindow.end),
+            'is-focus': slotState(slot).isInFocusWindow,
+            'is-outside-focus': !slotState(slot).isInFocusWindow,
             'hour-boundary': slot.isHour,
-            'creatable-slot': isCreatableSlot(slot),
+            [`is-${slotState(slot).timePosition}`]: true,
+            [`is-${slotState(slot).availability}`]: true,
           }"
-          :disabled="!isCreatableSlot(slot)"
-          :aria-label="isCreatableSlot(slot) ? `${room.name} ${slot.label} 创建预约` : undefined"
+          :disabled="!slotState(slot).isBookable"
+          :aria-label="
+            slotState(slot).isBookable ? `${room.name} ${slot.label} 创建预约` : undefined
+          "
           @click="emit('selectEmptySlot', room, slot)"
         >
-          <span v-if="isCreatableSlot(slot)" class="create-slot-label">+ 预约</span>
         </button>
       </div>
       <div class="overlay-grid">
@@ -152,24 +151,11 @@ function isCreatableSlot(slot: DaySlot): boolean {
   border-left: 1px solid #cbd5e1;
   background: #fff;
 }
-.slot-cell.outside-focus {
-  background: #f8fafc;
-}
 .slot-cell.hour-boundary {
   border-left: 2px solid #64748b;
 }
-.creatable-slot {
+.slot-cell.is-bookable {
   cursor: pointer;
-}
-.create-slot-label {
-  display: none;
-  color: #2563eb;
-  font-size: 12px;
-  font-weight: 700;
-}
-.creatable-slot:hover .create-slot-label,
-.creatable-slot:focus-visible .create-slot-label {
-  display: block;
 }
 .timeline-overlay {
   z-index: 1;

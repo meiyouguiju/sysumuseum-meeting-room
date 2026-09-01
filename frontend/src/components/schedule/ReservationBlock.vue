@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 
 import type { ScheduleBooking } from '@/types/schedule'
-import { formatTimeRange } from '@/utils/schedule'
+import { formatTimeRange, scheduleBookingStatusText } from '@/utils/schedule'
 
 const props = defineProps<{
   booking: ScheduleBooking
@@ -10,14 +10,7 @@ const props = defineProps<{
 }>()
 defineEmits<{ select: [booking: ScheduleBooking] }>()
 
-const statusText = computed(
-  () =>
-    ({
-      UPCOMING: '未开始',
-      IN_PROGRESS: '进行中',
-      ENDED: '已结束',
-    })[props.booking.displayStatus],
-)
+const statusText = computed(() => scheduleBookingStatusText(props.booking.displayStatus))
 const timeRange = computed(() => formatTimeRange(props.booking.startTime, props.booking.endTime))
 const dividerIndexes = computed(() =>
   Array.from({ length: Math.max(0, props.slotSpan - 1) }, (_, index) => index + 1),
@@ -32,7 +25,7 @@ const dividerIndexes = computed(() =>
     <button
       class="reservation-block"
       :class="[
-        `reservation-${booking.displayStatus.toLowerCase()}`,
+        `schedule-booking--${booking.displayStatus.toLowerCase()}`,
         { 'reservation-mine': booking.isMine },
       ]"
       @click="$emit('select', booking)"
@@ -64,7 +57,6 @@ const dividerIndexes = computed(() =>
   border: 0;
   border-radius: 4px;
   padding: 5px 7px;
-  color: #172554;
   text-align: left;
   overflow: hidden;
   cursor: pointer;
@@ -99,17 +91,6 @@ const dividerIndexes = computed(() =>
   width: 1px;
   background: rgb(30 64 175 / 42%);
   pointer-events: none;
-}
-.reservation-upcoming {
-  background: #bfdbfe;
-}
-.reservation-in_progress {
-  background: #fde68a;
-  color: #713f12;
-}
-.reservation-ended {
-  background: #d1d5db;
-  color: #374151;
 }
 .reservation-status {
   font-weight: 700;

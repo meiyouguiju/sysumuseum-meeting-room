@@ -36,6 +36,8 @@ function updateSelectedDate(value: string | null) {
       type="date"
       value-format="YYYY-MM-DD"
       format="YYYY 年 MM 月 DD 日"
+      :editable="false"
+      :clearable="false"
       :disabled-date="disableDate"
       aria-label="选择日程日期"
       @update:model-value="updateSelectedDate"
@@ -51,5 +53,25 @@ function updateSelectedDate(value: string | null) {
   flex-wrap: wrap;
   gap: 10px;
   align-items: center;
+}
+
+@media (max-width: 800px) {
+  .schedule-toolbar {
+    width: 100%;
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+
+  .schedule-toolbar :deep(.el-date-editor) {
+    width: auto;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .schedule-toolbar :deep(.el-button) {
+    min-height: 40px;
+    padding: 8px;
+    white-space: nowrap;
+  }
 }
 </style>

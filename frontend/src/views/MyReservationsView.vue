@@ -73,6 +73,7 @@ async function openEdit(id: number) {
         class="filter-date"
         type="date"
         value-format="YYYY-MM-DD"
+        :editable="false"
         clearable
         placeholder="选择日期"
         aria-label="日期筛选"
@@ -213,6 +214,21 @@ h1 {
     border: 1px solid #cbd5e1;
     border-radius: 8px;
     background: #fff;
+  }
+  .reservation-card strong,
+  .reservation-card span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .reservation-card strong {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    white-space: normal;
+  }
+  .reservation-card span {
+    white-space: nowrap;
   }
   .reservation-card > div {
     display: flex;

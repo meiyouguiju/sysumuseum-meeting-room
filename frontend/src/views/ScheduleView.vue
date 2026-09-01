@@ -12,13 +12,14 @@ import DesktopScheduleGrid from '@/components/schedule/DesktopScheduleGrid.vue'
 import MobileScheduleTimeline from '@/components/schedule/MobileScheduleTimeline.vue'
 import ScheduleToolbar from '@/components/schedule/ScheduleToolbar.vue'
 import { useMobileBreakpoint } from '@/composables/useMobileBreakpoint'
+import { useDrawerHistory } from '@/composables/useDrawerHistory'
 import { useCreateBooking, type CreateBookingSubmission } from '@/composables/useCreateBooking'
 import { scheduleQueryOptions } from '@/queries/schedule'
 import { scheduleQueryKey } from '@/queries/schedule'
 import type { CreateBookingRequest, CreateBookingResponse } from '@/types/booking'
 import type { ScheduleBooking, ScheduleRoom } from '@/types/schedule'
 import type { DaySlot } from '@/utils/schedule'
-import { formatTimeRange, todayInShanghai } from '@/utils/schedule'
+import { formatTimeRange, scheduleBookingStatusText, todayInShanghai } from '@/utils/schedule'
 
 const selectedDate = ref(todayInShanghai())
 const scheduleQuery = useQuery(computed(() => scheduleQueryOptions(selectedDate.value)))
@@ -58,6 +59,17 @@ const myBookingDrawerVisible = computed({
     if (!visible) selectedMyBookingId.value = undefined
   },
 })
+const visibleSchedule = computed(() => {
+  const schedule = scheduleQuery.data.value
+  if (!schedule) return undefined
+
+  return {
+    ...schedule,
+    rooms: schedule.rooms.filter((room) => room.status === 'ENABLED'),
+  }
+})
+
+useDrawerHistory(drawerVisible)
 
 const selectedRoom = computed(() => {
   if (!selectedBooking.value) {
@@ -67,12 +79,12 @@ const selectedRoom = computed(() => {
   return scheduleQuery.data.value?.rooms.find((room) => room.id === selectedBooking.value?.roomId)
 })
 const selectedMobileRoom = computed(() => {
-  const rooms = scheduleQuery.data.value?.rooms ?? []
+  const rooms = visibleSchedule.value?.rooms ?? []
   return rooms.find((room) => room.id === selectedMobileRoomId.value) ?? rooms[0]
 })
 
 watch(
-  () => scheduleQuery.data.value?.rooms,
+  () => visibleSchedule.value?.rooms,
   (rooms) => {
     if (
       rooms &&
@@ -86,8 +98,8 @@ watch(
 )
 
 const selectedBookingStatus = computed(() => {
-  const status = selectedBooking.value?.displayStatus
-  return status === 'UPCOMING' ? '未开始' : status === 'IN_PROGRESS' ? '进行中' : '已结束'
+  if (!selectedBooking.value) return ''
+  return scheduleBookingStatusText(selectedBooking.value.displayStatus)
 })
 
 const createDrawerVisible = computed({
@@ -159,7 +171,6 @@ async function resolveCreateBookingResult() {
     <div class="schedule-page-header">
       <div>
         <h1>会议室日程</h1>
-        <p>查看全天会议室安排；重点展示时段由服务端配置。</p>
       </div>
       <ScheduleToolbar v-model="selectedDate" />
     </div>
@@ -171,12 +182,12 @@ async function resolveCreateBookingResult() {
       @retry="scheduleQuery.refetch()"
     />
     <DesktopScheduleGrid
-      v-else-if="scheduleQuery.data.value && !isMobile"
-      :schedule="scheduleQuery.data.value"
+      v-else-if="visibleSchedule && !isMobile"
+      :schedule="visibleSchedule"
       @select-booking="selectBooking"
       @select-empty-slot="selectEmptySlot"
     />
-    <template v-else-if="scheduleQuery.data.value && selectedMobileRoom">
+    <template v-else-if="visibleSchedule && selectedMobileRoom">
       <div class="mobile-room-selector">
         <label class="mobile-room-label">会议室</label>
 
@@ -186,20 +197,19 @@ async function resolveCreateBookingResult() {
           class="mobile-room-select"
         >
           <el-option
-            v-for="room in scheduleQuery.data.value.rooms"
+            v-for="room in visibleSchedule.rooms"
             :key="room.id"
-            :label="`${room.name}${room.status === 'DISABLED' ? '（已停用）' : ''}`"
+            :label="room.name"
             :value="room.id"
           />
         </el-select>
 
         <div v-if="selectedMobileRoom" class="mobile-room-summary">
           {{ selectedMobileRoom.capacity }} 人
-          <span v-if="selectedMobileRoom.status === 'DISABLED'"> · 已停用</span>
         </div>
       </div>
       <MobileScheduleTimeline
-        :schedule="scheduleQuery.data.value"
+        :schedule="visibleSchedule"
         :room="selectedMobileRoom"
         @select-booking="selectBooking"
         @select-empty-slot="selectEmptySlot"
@@ -229,7 +239,7 @@ async function resolveCreateBookingResult() {
       :date="selectedDate"
       :initial-room-id="selectedEmptySlot.room.id"
       :initial-start-time="selectedEmptySlot.slot.label"
-      :rooms="scheduleQuery.data.value?.rooms ?? []"
+      :rooms="visibleSchedule?.rooms ?? []"
       :has-unknown-result="hasUnknownResult"
       :submitting="isSubmitting"
       :resolving-unknown-result="isResolvingUnknownResult"
@@ -256,10 +266,6 @@ async function resolveCreateBookingResult() {
 h1 {
   margin: 0 0 6px;
 }
-p {
-  margin: 0;
-  color: #64748b;
-}
 @media (max-width: 800px) {
   .schedule-page {
     width: auto;
@@ -267,13 +273,18 @@ p {
     transform: none;
   }
   .schedule-page-header {
+    gap: 12px;
     align-items: flex-start;
     flex-direction: column;
+  }
+  h1 {
+    margin: 0;
+    font-size: 20px;
   }
 }
 .mobile-room-selector {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .mobile-room-label {

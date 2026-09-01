@@ -77,6 +77,46 @@ a {
   gap: 8px;
 }
 
+.schedule-slot.is-focus {
+  background: #f4faf5;
+}
+.schedule-slot.is-outside-focus {
+  background: #f8fafc;
+}
+.schedule-slot.is-past {
+  background-color: #f8fafc;
+}
+.schedule-slot.is-focus.is-past {
+  background-color: #f1f5f3;
+}
+.schedule-slot.is-bookable {
+  background-color: #ecfdf5;
+}
+.schedule-slot.is-focus.is-bookable {
+  background-color: #dcfce7;
+}
+.schedule-slot.is-non-bookable:not(.is-past) {
+  background-color: #e2e8f0;
+}
+.schedule-slot.is-focus.is-non-bookable:not(.is-past) {
+  background-color: #e8f0ea;
+}
+.schedule-slot.is-current-slot-hold {
+  background: repeating-linear-gradient(-45deg, #e2e8f0, #e2e8f0 4px, #f8fafc 4px, #f8fafc 8px);
+}
+.schedule-booking--upcoming {
+  color: #172554;
+  background: #bfdbfe;
+}
+.schedule-booking--in_progress {
+  color: #713f12;
+  background: #fde68a;
+}
+.schedule-booking--ended {
+  color: #374151;
+  background: #d1d5db;
+}
+
 @media (max-width: 800px) {
   .app-header {
     align-items: flex-start;
@@ -108,7 +148,10 @@ a {
   }
   .brand {
     flex: 1;
-    white-space: normal;
+    overflow: hidden;
+    font-size: 15px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .user-summary {
     font-size: 14px;

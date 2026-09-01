@@ -5,6 +5,22 @@ export interface DaySlot {
   isHour: boolean
 }
 
+export type ScheduleSlotTimePosition = 'past' | 'current' | 'future'
+
+export type ScheduleSlotAvailability = 'booking' | 'current-slot-hold' | 'bookable' | 'non-bookable'
+
+export interface ScheduleSlotState {
+  timePosition: ScheduleSlotTimePosition
+  availability: ScheduleSlotAvailability
+  isInFocusWindow: boolean
+  isBookable: boolean
+}
+
+export interface ScheduleBookingLike {
+  startTime: string
+  endTime: string
+}
+
 const MINUTES_PER_DAY = 24 * 60
 
 export function buildDaySlots(slotMinutes: number): DaySlot[] {
@@ -101,7 +117,7 @@ export function isCreatableScheduleSlot(input: {
   slot: DaySlot
   slots: DaySlot[]
   slotMinutes: number
-  bookings: Array<{ startTime: string; endTime: string }>
+  bookings: ScheduleBookingLike[]
   unavailableSlots: Array<{ slotStart: string }>
 }): boolean {
   if (input.roomStatus !== 'ENABLED' || input.slot.index === input.slots.length - 1) return false
@@ -120,4 +136,60 @@ export function isCreatableScheduleSlot(input: {
     const end = start + calculateSlotSpan(booking.startTime, booking.endTime, input.slotMinutes)
     return input.slot.index >= start && input.slot.index < end
   })
+}
+
+export function getScheduleSlotState(input: {
+  date: string
+  roomStatus: 'ENABLED' | 'DISABLED'
+  slot: DaySlot
+  slots: DaySlot[]
+  slotMinutes: number
+  focusWindow: { start: string; end: string }
+  bookings: ScheduleBookingLike[]
+  unavailableSlots: Array<{ slotStart: string }>
+}): ScheduleSlotState {
+  const timePosition = getScheduleSlotTimePosition(input.date, input.slot, input.slotMinutes)
+  const hasBooking = input.bookings.some((booking) => {
+    const start = timeToSlotIndex(booking.startTime, input.slotMinutes)
+    const end = start + calculateSlotSpan(booking.startTime, booking.endTime, input.slotMinutes)
+    return input.slot.index >= start && input.slot.index < end
+  })
+  const hasCurrentSlotHold = input.unavailableSlots.some(
+    (slot) => timeToSlotIndex(slot.slotStart, input.slotMinutes) === input.slot.index,
+  )
+  const isBookable = !hasBooking && !hasCurrentSlotHold && isCreatableScheduleSlot(input)
+
+  return {
+    timePosition,
+    availability: hasBooking
+      ? 'booking'
+      : hasCurrentSlotHold
+        ? 'current-slot-hold'
+        : isBookable
+          ? 'bookable'
+          : 'non-bookable',
+    isInFocusWindow: isInFocusWindow(input.slot, input.focusWindow.start, input.focusWindow.end),
+    isBookable,
+  }
+}
+
+function getScheduleSlotTimePosition(
+  date: string,
+  slot: DaySlot,
+  slotMinutes: number,
+): ScheduleSlotTimePosition {
+  const today = todayInShanghai()
+  if (date < today) return 'past'
+  if (date > today) return 'future'
+
+  const currentSlotStart = Math.floor(currentMinutesInShanghai() / slotMinutes) * slotMinutes
+  if (slot.minutes < currentSlotStart) return 'past'
+  if (slot.minutes === currentSlotStart) return 'current'
+  return 'future'
+}
+
+export function scheduleBookingStatusText(
+  displayStatus: 'UPCOMING' | 'IN_PROGRESS' | 'ENDED',
+): string {
+  return { UPCOMING: '未开始', IN_PROGRESS: '进行中', ENDED: '已结束' }[displayStatus]
 }

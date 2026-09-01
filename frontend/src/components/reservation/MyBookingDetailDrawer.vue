@@ -8,6 +8,7 @@ import { copyText, buildWeChatNotification } from '@/utils/wechatNotification'
 import ErrorState from '@/components/common/ErrorState.vue'
 import LoadingState from '@/components/common/LoadingState.vue'
 import ReservationForm from '@/components/reservation/ReservationForm.vue'
+import { useDrawerHistory } from '@/composables/useDrawerHistory'
 import { useMobileBreakpoint } from '@/composables/useMobileBreakpoint'
 import { bookingDetailQueryKey } from '@/queries/bookings'
 import { roomsQueryOptions } from '@/queries/rooms'
@@ -15,6 +16,7 @@ import { scheduleQueryKey } from '@/queries/schedule'
 import { ApiError } from '@/types/api'
 import type { BookingDetail, CreateBookingRequest } from '@/types/booking'
 import { formatTimeRange } from '@/utils/schedule'
+import { displayOptionalDetailValue } from '@/utils/bookingDetail'
 
 const props = defineProps<{ modelValue: boolean; bookingId?: number; editOnOpen?: boolean }>()
 const emit = defineEmits<{ 'update:modelValue': [visible: boolean] }>()
@@ -31,6 +33,14 @@ const detailQuery = useQuery({
   enabled: computed(() => props.modelValue && props.bookingId !== undefined),
 })
 const booking = computed(() => detailQuery.data.value)
+const drawerVisible = computed({
+  get: () => props.modelValue,
+  set: (visible: boolean) => {
+    if (!visible) closeDrawer()
+  },
+})
+
+useDrawerHistory(drawerVisible)
 
 watch(
   () => props.modelValue,
@@ -164,10 +174,9 @@ async function cancelBooking() {
 
 <template>
   <el-drawer
-    :model-value="modelValue"
+    v-model="drawerVisible"
     :title="isEditing ? '修改预约' : '预约详情'"
     :size="isMobile ? '100%' : '440px'"
-    @update:model-value="!$event && closeDrawer()"
   >
     <LoadingState v-if="detailQuery.isPending.value" />
     <ErrorState
@@ -196,13 +205,13 @@ async function cancelBooking() {
         }}</el-descriptions-item>
         <el-descriptions-item label="会议主题">{{ booking.subject }}</el-descriptions-item>
         <el-descriptions-item label="预计人数">{{
-          booking.attendeeCount ?? '未填写'
+          displayOptionalDetailValue(booking.attendeeCount)
         }}</el-descriptions-item>
         <el-descriptions-item label="参会人员">{{
-          booking.participantsText ?? '未填写'
+          displayOptionalDetailValue(booking.participantsText)
         }}</el-descriptions-item>
         <el-descriptions-item label="说明">{{
-          booking.description ?? '未填写'
+          displayOptionalDetailValue(booking.description)
         }}</el-descriptions-item>
         <el-descriptions-item label="时间"
           >{{ booking.startTime.slice(0, 10) }}
