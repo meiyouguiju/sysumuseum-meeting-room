@@ -54,6 +54,17 @@ cp .env.example .env
 
 在 Container Manager 中选择“项目”→“新增”，选择 `meeting-room/deploy/compose.yaml`，再启动项目。首次启动由 Spring Boot Flyway 创建或校验数据库结构。
 
+Compose 文件已固定项目名称为 `meeting-room`。因此在 `meeting-room/deploy` 目录直接使用以下命令时，也会管理 `meeting-room-mysql-1`、`meeting-room-backend-1` 和 `meeting-room-frontend-1`，不会按当前目录创建另一套容器：
+
+```sh
+docker compose up -d
+docker compose ps
+docker compose logs -f backend
+docker compose down
+```
+
+`docker compose -p meeting-room ...` 仍是等价的显式写法。不要对同一 `data/mysql` 目录使用不同的 Compose project name 同时启动两套 MySQL 容器。
+
 局域网访问地址为：
 
 ```text

@@ -4,10 +4,12 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
+@Profile("!pin-maintenance")
 @RequiredArgsConstructor
 public class SchemaVerificationRunner implements ApplicationRunner {
 

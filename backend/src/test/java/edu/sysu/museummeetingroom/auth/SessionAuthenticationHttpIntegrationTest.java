@@ -13,8 +13,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -33,12 +35,17 @@ class SessionAuthenticationHttpIntegrationTest {
 
     private final MockMvc mockMvc;
     private final JdbcTemplate jdbcTemplate;
+    private final ApplicationContext applicationContext;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Autowired
-    SessionAuthenticationHttpIntegrationTest(MockMvc mockMvc, JdbcTemplate jdbcTemplate) {
+    SessionAuthenticationHttpIntegrationTest(
+            MockMvc mockMvc,
+            JdbcTemplate jdbcTemplate,
+            ApplicationContext applicationContext) {
         this.mockMvc = mockMvc;
         this.jdbcTemplate = jdbcTemplate;
+        this.applicationContext = applicationContext;
     }
 
     @BeforeEach
@@ -87,6 +94,12 @@ class SessionAuthenticationHttpIntegrationTest {
         assertThat(clearedCookie.getMaxAge()).isZero();
         assertThat(clearedCookie.getSecure()).isFalse();
         mockMvc.perform(get("/api/v1/me").cookie(sessionCookie)).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void doesNotCreateSpringBootDefaultInMemoryUserDetailsManager() {
+        assertThat(applicationContext.containsBean("inMemoryUserDetailsManager")).isFalse();
+        assertThat(applicationContext.getBeansOfType(InMemoryUserDetailsManager.class)).isEmpty();
     }
 
     @Test

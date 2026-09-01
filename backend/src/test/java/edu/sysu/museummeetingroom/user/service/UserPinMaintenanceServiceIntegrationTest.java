@@ -8,10 +8,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
+
+import edu.sysu.museummeetingroom.bootstrap.SchemaVerificationRunner;
+import edu.sysu.museummeetingroom.maintenance.MaintenanceSchedulingConfiguration;
+import edu.sysu.museummeetingroom.maintenance.MaintenanceScheduler;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("pin-maintenance")
@@ -21,20 +26,24 @@ class UserPinMaintenanceServiceIntegrationTest {
     private static final long UPDATE_USER_ID = 972001L;
     private static final long DUPLICATE_USER_ID = 972002L;
     private static final String CREATED_USER_NAME = "PIN维护创建测试";
+    private static final String SECOND_CREATED_USER_NAME = "PIN维护连续创建测试";
     private static final String DUPLICATE_USER_NAME = "PIN维护同名测试";
 
     private final UserPinMaintenanceService userPinMaintenanceService;
     private final JdbcTemplate jdbcTemplate;
     private final PasswordEncoder passwordEncoder;
+    private final ApplicationContext applicationContext;
 
     @Autowired
     UserPinMaintenanceServiceIntegrationTest(
             UserPinMaintenanceService userPinMaintenanceService,
             JdbcTemplate jdbcTemplate,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            ApplicationContext applicationContext) {
         this.userPinMaintenanceService = userPinMaintenanceService;
         this.jdbcTemplate = jdbcTemplate;
         this.passwordEncoder = passwordEncoder;
+        this.applicationContext = applicationContext;
     }
 
     @BeforeEach
@@ -56,6 +65,27 @@ class UserPinMaintenanceServiceIntegrationTest {
                 "SELECT pin_hash FROM sys_user WHERE display_name = ?", String.class, CREATED_USER_NAME);
         assertThat(pinHash).isNotBlank();
         assertThat(passwordEncoder.matches("0376", pinHash)).isTrue();
+    }
+
+    @Test
+    void createsTwoUsersSequentiallyWithoutClosingTheDataSource() {
+        userPinMaintenanceService.execute(new UserPinMaintenanceCommand(
+                "create", CREATED_USER_NAME, "0376", 0, "USER"));
+        userPinMaintenanceService.execute(new UserPinMaintenanceCommand(
+                "create", SECOND_CREATED_USER_NAME, "4826", 0, "USER"));
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM sys_user WHERE display_name IN (?, ?)",
+                Integer.class,
+                CREATED_USER_NAME,
+                SECOND_CREATED_USER_NAME)).isEqualTo(2);
+    }
+
+    @Test
+    void pinMaintenanceProfileExcludesNormalStartupRunnerAndScheduler() {
+        assertThat(applicationContext.getBeansOfType(SchemaVerificationRunner.class)).isEmpty();
+        assertThat(applicationContext.getBeansOfType(MaintenanceSchedulingConfiguration.class)).isEmpty();
+        assertThat(applicationContext.getBeansOfType(MaintenanceScheduler.class)).isEmpty();
     }
 
     @Test
@@ -112,5 +142,6 @@ class UserPinMaintenanceServiceIntegrationTest {
     private void cleanup() {
         jdbcTemplate.update("DELETE FROM sys_user WHERE id IN (?, ?)", UPDATE_USER_ID, DUPLICATE_USER_ID);
         jdbcTemplate.update("DELETE FROM sys_user WHERE display_name = ?", CREATED_USER_NAME);
+        jdbcTemplate.update("DELETE FROM sys_user WHERE display_name = ?", SECOND_CREATED_USER_NAME);
     }
 }
