@@ -7,7 +7,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile("!pin-maintenance")
+@Profile("!pin-maintenance & !user-bootstrap")
 @Slf4j
 @RequiredArgsConstructor
 public class MaintenanceScheduler {
