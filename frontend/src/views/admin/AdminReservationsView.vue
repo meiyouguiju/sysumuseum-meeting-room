@@ -4,10 +4,11 @@ import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 import { cancelAdminBooking, exportAdminBookings, updateAdminBooking } from '@/api/admin/bookings'
-import { getBookingDetail } from '@/api/bookings'
+import { getBookingDetail, updateBookingSupplementalInfo } from '@/api/bookings'
 import AdminBookingEditForm from '@/components/admin/AdminBookingEditForm.vue'
 import ErrorState from '@/components/common/ErrorState.vue'
 import LoadingState from '@/components/common/LoadingState.vue'
+import SupplementalInfoForm from '@/components/reservation/SupplementalInfoForm.vue'
 import { useDrawerHistory } from '@/composables/useDrawerHistory'
 import { adminBookingsQueryOptions } from '@/queries/adminBookings'
 import { bookingDetailQueryKey, bookingDetailQueryOptions } from '@/queries/bookings'
@@ -21,7 +22,7 @@ import type {
   AdminUpcomingBookingUpdateRequest,
 } from '@/types/admin'
 import { ApiError } from '@/types/api'
-import type { BookingDetail } from '@/types/booking'
+import type { BookingDetail, SupplementalInfoRequest } from '@/types/booking'
 import { formatTimeRange } from '@/utils/schedule'
 import { displayOptionalDetailValue } from '@/utils/bookingDetail'
 
@@ -29,7 +30,9 @@ const page = ref(1)
 const size = 20
 const selectedId = ref<number>()
 const editSnapshot = ref<BookingDetail>()
+const supplementalSnapshot = ref<BookingDetail>()
 const isEditing = ref(false)
+const isSupplementing = ref(false)
 const isMutating = ref(false)
 const filters = reactive<AdminBookingsParams>({})
 const dateRange = ref<[string, string]>()
@@ -75,8 +78,13 @@ function clearEditSnapshot() {
   editSnapshot.value = undefined
   isEditing.value = false
 }
+function clearSupplementalSnapshot() {
+  supplementalSnapshot.value = undefined
+  isSupplementing.value = false
+}
 function closeDrawer() {
   clearEditSnapshot()
+  clearSupplementalSnapshot()
   selectedId.value = undefined
 }
 function canEdit(value: BookingDetail) {
@@ -103,6 +111,11 @@ function beginEdit() {
     editSnapshot.value = cloneBooking(booking.value)
     isEditing.value = true
   }
+}
+function beginSupplement() {
+  if (!booking.value) return
+  supplementalSnapshot.value = cloneBooking(booking.value)
+  isSupplementing.value = true
 }
 async function invalidateData(id: number, oldDate: string, newDate?: string) {
   await Promise.all([
@@ -172,6 +185,40 @@ async function saveEdit(request: AdminBookingUpdateRequest) {
     closeDrawer()
   } catch (error) {
     await handleError(error, original.startTime.slice(0, 10))
+  } finally {
+    isMutating.value = false
+  }
+}
+async function saveSupplementalInfo(request: Omit<SupplementalInfoRequest, 'version'>) {
+  if (!supplementalSnapshot.value) return
+  const original = supplementalSnapshot.value
+  isMutating.value = true
+  try {
+    await updateBookingSupplementalInfo(original.id, { ...request, version: original.version })
+    ElMessage.success('补充信息已保存')
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['admin-bookings'] }),
+      queryClient.invalidateQueries({ queryKey: ['my-bookings'] }),
+      queryClient.invalidateQueries({ queryKey: bookingDetailQueryKey(original.id) }),
+    ])
+    clearSupplementalSnapshot()
+  } catch (error) {
+    const apiError = error as ApiError
+    if (apiError.errorCode === 'BOOKING_VERSION_CONFLICT') {
+      clearSupplementalSnapshot()
+      await Promise.all([
+        detailQuery.refetch(),
+        queryClient.invalidateQueries({ queryKey: ['admin-bookings'] }),
+        queryClient.invalidateQueries({ queryKey: ['my-bookings'] }),
+      ])
+      await ElMessageBox.alert(
+        '该预约已被其他操作修改，你本次修改未保存。请基于最新信息重新进入修改。',
+        '修改失败',
+        { confirmButtonText: '确定', type: 'warning' },
+      )
+    } else {
+      ElMessage.error(apiError.message ?? '保存失败，请稍后重试。')
+    }
   } finally {
     isMutating.value = false
   }
@@ -350,7 +397,10 @@ function resetFilters() {
         :page-size="size"
         :total="listQuery.data.value.total"
         @current-change="page = $event" /></template
-    ><el-drawer v-model="visible" :title="isEditing ? '修改预约' : '预约详情'" size="480px"
+    ><el-drawer
+      v-model="visible"
+      :title="isEditing ? '修改预约' : isSupplementing ? '补充预约信息' : '预约详情'"
+      size="480px"
       ><LoadingState v-if="detailQuery.isPending.value" /><ErrorState
         v-else-if="detailQuery.isError.value"
         :error="detailQuery.error.value"
@@ -363,6 +413,12 @@ function resetFilters() {
         :submitting="isMutating"
         @cancel="clearEditSnapshot"
         @submit="saveEdit"
+      /><SupplementalInfoForm
+        v-else-if="isSupplementing && supplementalSnapshot"
+        :booking="supplementalSnapshot"
+        :submitting="isMutating"
+        @cancel="clearSupplementalSnapshot"
+        @submit="saveSupplementalInfo"
       /><template v-else-if="booking"
         ><el-descriptions :column="1" border
           ><el-descriptions-item label="预约号">{{ booking.bookingNo }}</el-descriptions-item
@@ -390,6 +446,7 @@ function resetFilters() {
         >
         <div class="actions">
           <el-button v-if="canEdit(booking)" type="primary" @click="beginEdit">修改预约</el-button
+          ><el-button type="primary" @click="beginSupplement">保存补充信息</el-button
           ><el-button
             v-if="canEdit(booking)"
             type="danger"

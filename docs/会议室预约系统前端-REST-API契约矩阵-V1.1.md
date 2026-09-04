@@ -842,6 +842,19 @@ ACTIVE
 422 BOOKING_DURATION_EXCEEDED
 ```
 
+## 补充信息
+
+`PATCH /api/v1/bookings/{bookingId}/supplemental-info` 只发送：
+
+```text
+version
+attendeeCount
+participantsText
+description
+```
+
+禁止发送或修改 `roomId`、`subject`、`startTime`、`endTime`。预约创建者本人和 ACTIVE ADMIN 可在 `UPCOMING`、`IN_PROGRESS`、`ENDED`、`CANCELLED` 任意状态调用；ADMIN 修改他人不要求 reason。成功后必须失效当前详情、所有 `my-bookings` 和 `admin-bookings` 查询；不必失效公共 Schedule。该操作使用 `BOOKING_VERSION_CONFLICT`，并写 reason/slot_change_json 均为 NULL 的 UPDATE 审计。
+
 ---
 
 # 25. 普通用户修改刷新范围

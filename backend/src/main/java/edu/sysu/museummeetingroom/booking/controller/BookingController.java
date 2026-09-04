@@ -3,6 +3,7 @@ package edu.sysu.museummeetingroom.booking.controller;
 import com.fasterxml.jackson.databind.JsonNode;
 import edu.sysu.museummeetingroom.booking.command.CreateBookingCommand;
 import edu.sysu.museummeetingroom.booking.command.UpdateBookingCommand;
+import edu.sysu.museummeetingroom.booking.command.SupplementalInfoCommand;
 import edu.sysu.museummeetingroom.booking.idempotency.CreateBookingCoordinationResult;
 import edu.sysu.museummeetingroom.booking.idempotency.CreateBookingCoordinator;
 import edu.sysu.museummeetingroom.booking.idempotency.IdempotencyKeyValidator;
@@ -11,10 +12,12 @@ import edu.sysu.museummeetingroom.booking.idempotency.IdempotencyResultService;
 import edu.sysu.museummeetingroom.booking.web.CreateBookingRequest;
 import edu.sysu.museummeetingroom.booking.web.IdempotencyResultResponse;
 import edu.sysu.museummeetingroom.booking.web.UpdateBookingRequest;
+import edu.sysu.museummeetingroom.booking.web.SupplementalInfoRequest;
 import edu.sysu.museummeetingroom.booking.web.CancelBookingRequest;
 import edu.sysu.museummeetingroom.booking.web.CancelBookingResponse;
 import edu.sysu.museummeetingroom.booking.mutation.service.BookingCancelService;
 import edu.sysu.museummeetingroom.booking.mutation.service.BookingUpdateService;
+import edu.sysu.museummeetingroom.booking.mutation.service.BookingSupplementalInfoService;
 import edu.sysu.museummeetingroom.booking.query.dto.BookingDetailResponse;
 import edu.sysu.museummeetingroom.common.api.ApiErrorResponse;
 import edu.sysu.museummeetingroom.common.web.RequestIdFilter;
@@ -42,6 +45,7 @@ public class BookingController {
     private final CreateBookingCoordinator createBookingCoordinator;
     private final IdempotencyResultService idempotencyResultService;
     private final BookingUpdateService bookingUpdateService;
+    private final BookingSupplementalInfoService bookingSupplementalInfoService;
     private final BookingCancelService bookingCancelService;
 
     @PostMapping
@@ -76,6 +80,13 @@ public class BookingController {
         return bookingUpdateService.update(bookingId, toCommand(request));
     }
 
+    @PatchMapping("/{bookingId}/supplemental-info")
+    public BookingDetailResponse updateSupplementalInfo(
+            @PathVariable long bookingId,
+            @Valid @RequestBody SupplementalInfoRequest request) {
+        return bookingSupplementalInfoService.update(bookingId, toCommand(request));
+    }
+
     @PostMapping("/{bookingId}/cancel")
     public CancelBookingResponse cancel(@PathVariable long bookingId, @Valid @RequestBody CancelBookingRequest request) {
         return bookingCancelService.cancel(bookingId, request.version(), request.reason());
@@ -96,6 +107,11 @@ public class BookingController {
         return new UpdateBookingCommand(
                 request.version(), request.roomId(), request.subject(), request.startTime(), request.endTime(),
                 request.attendeeCount(), request.participantsText(), request.description());
+    }
+
+    private SupplementalInfoCommand toCommand(SupplementalInfoRequest request) {
+        return new SupplementalInfoCommand(
+                request.version(), request.attendeeCount(), request.participantsText(), request.description());
     }
 
     private ResponseEntity<?> toCreateResponse(

@@ -50,10 +50,11 @@
 | Method / Path | 权限 | 请求 | 成功响应 | 错误 |
 | --- | --- | --- | --- | --- |
 | `PATCH /bookings/{bookingId}` | 本人、ACTIVE、未开始 | 完整字段：`version,roomId,subject,startTime,endTime,attendeeCount,participantsText,description` | `200 BookingDetail` | `401`、`403`、`404`、`409`、`422` |
+| `PATCH /bookings/{bookingId}/supplemental-info` | 预约创建者本人或 ACTIVE ADMIN；任意预约状态 | 仅 `version,attendeeCount,participantsText,description` | `200 BookingDetail` | `401`、`403`、`404`、`409` |
 | `POST /bookings/{bookingId}/cancel` | 本人、ACTIVE、未结束 | `{version,reason?}` | `200 {id,status,version,cancelledAt,slotRelease}` | `401`、`403`、`404`、`409` |
 | `GET /me/bookings?page=&size=&status?=&date?` | 已认证 | 分页；可选 status/date，先筛选后分页 | `200 {items,page,size,total,totalPages}`，按 `startTime DESC,id DESC` | `401` |
 
-修改用 `id + version` 乐观锁；受影响行数为 0 时 `409 BOOKING_VERSION_CONFLICT`。时间/房间变更重校验全部创建规则和 `booking_slot` 唯一约束；冲突不改变原预约。普通用户不能修改已开始、已结束或已取消预约。取消未开始预约立即释放所有槽；进行中取消保留当前 30 分钟槽、释放后续槽；已结束不可取消。成功或冲突后前端刷新日程。
+修改用 `id + version` 乐观锁；受影响行数为 0 时 `409 BOOKING_VERSION_CONFLICT`。时间/房间变更重校验全部创建规则和 `booking_slot` 唯一约束；冲突不改变原预约。普通用户不能通过完整修改接口修改已开始、已结束或已取消预约。补充信息接口不修改核心预约事实、不变更 `booking_slot`，允许预约创建者本人和 ACTIVE ADMIN 在 UPCOMING、IN_PROGRESS、ENDED、CANCELLED 任意状态修改预计人数、参会人员和说明；空白文本规范化为 NULL，并写 reason 为 NULL 的 UPDATE 审计。取消未开始预约立即释放所有槽；进行中取消保留当前 30 分钟槽、释放后续槽；已结束不可取消。成功或冲突后前端刷新日程。
 
 ### 3.4 管理员会议室
 
@@ -75,7 +76,7 @@
 | `POST /admin/bookings/{bookingId}/cancel` | ADMIN、ACTIVE、未结束 | `{version,reason}` | `200` 槽释放摘要 | `401`、`403`、`404`、`409` |
 | `GET /admin/bookings/export?organizerKeyword?=&fromDate?=&toDate?=&status?=&date?` | ADMIN | 与管理员列表使用同一筛选；date 仅兼容且不得与 fromDate/toDate 并用 | `200 text/csv; charset=utf-8` | `400`、`401`、`403` |
 
-管理员未开始预约的修改 body 必须完整：`version,roomId,subject,startTime,endTime,attendeeCount,participantsText,description,reason`。已开始未结束预约的 body 只允许：`version,subject,attendeeCount,participantsText,description,reason`；不得提交 `roomId,startTime,endTime`，否则 `409 BOOKING_STARTED_TIME_FIELDS_IMMUTABLE`。已结束不可改。修改/取消他人均必须填写原因并记录完整审计；管理员也不能代订，且同样受未来 14 天约束。进行中取消规则同普通用户。
+管理员未开始预约的核心修改 body 必须完整：`version,roomId,subject,startTime,endTime,attendeeCount,participantsText,description,reason`。已开始未结束预约的核心修改 body 只允许：`version,subject,attendeeCount,participantsText,description,reason`；不得提交 `roomId,startTime,endTime`，否则 `409 BOOKING_STARTED_TIME_FIELDS_IMMUTABLE`。已结束不可作核心修改。管理员可使用普通 booking 的 supplemental-info 接口在任意状态修改三个补充字段，且不要求 reason；该操作仍写完整 UPDATE 审计。核心修改/取消他人必须填写原因；管理员也不能代订，且同样受未来 14 天约束。进行中取消规则同普通用户。
 
 导出字段固定为预约号、会议室、预约人、主题、预计人数、参会人员、说明、起止时间、状态、取消时间、取消原因、创建时间、最后修改时间；以预约 `startTime` 落入闭区间筛选。使用 UTF-8，建议 UTF-8 BOM；文本单元格首个有效字符为 `=,+,-,@` 时加 `'` 防公式注入，再按 RFC 4180 正确转义逗号、引号和 CR/LF。
 

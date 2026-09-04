@@ -5,7 +5,7 @@ import type { ScheduleBooking, ScheduleResponse, ScheduleRoom } from '@/types/sc
 import type { DaySlot } from '@/utils/schedule'
 import {
   buildDaySlots,
-  calculateSlotSpan,
+  calculateTimelineBookingPlacement,
   currentMinutesInShanghai,
   getScheduleSlotState,
   timeToSlotIndex,
@@ -38,8 +38,12 @@ function bookingAt(slot: DaySlot): ScheduleBooking | undefined {
     (booking) => timeToSlotIndex(booking.startTime, props.schedule.slotMinutes) === slot.index,
   )
 }
-function bookingSpan(booking: ScheduleBooking) {
-  return calculateSlotSpan(booking.startTime, booking.endTime, props.schedule.slotMinutes)
+function bookingPlacement(booking: ScheduleBooking) {
+  return calculateTimelineBookingPlacement(
+    booking.startTime,
+    booking.endTime,
+    props.schedule.slotMinutes,
+  )
 }
 function slotState(slot: DaySlot) {
   return getScheduleSlotState({
@@ -114,7 +118,10 @@ onBeforeUnmount(() => {
           `schedule-booking--${bookingAt(slot)!.displayStatus.toLowerCase()}`,
           { 'mobile-booking-mine': bookingAt(slot)?.isMine },
         ]"
-        :style="{ '--booking-span': bookingSpan(bookingAt(slot)!) }"
+        :style="{
+          '--booking-offset': `${(bookingPlacement(bookingAt(slot)!).offsetMinutes / schedule.slotMinutes) * 56}px`,
+          '--booking-height': `${(bookingPlacement(bookingAt(slot)!).durationMinutes / schedule.slotMinutes) * 56}px`,
+        }"
         @click="emit('selectBooking', bookingAt(slot)!)"
       >
         <strong>{{ bookingAt(slot)?.subject }}</strong>
@@ -181,14 +188,14 @@ onBeforeUnmount(() => {
 }
 .mobile-booking {
   position: absolute;
-  top: 3px;
+  top: calc(3px + var(--booking-offset));
   right: 6px;
   left: 70px;
   z-index: 2;
   display: grid;
   align-content: center;
   gap: 2px;
-  height: calc(var(--booking-span) * 56px - 6px);
+  height: calc(var(--booking-height) - 6px);
   min-width: 0;
   padding: 8px;
   border: 0;

@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import type { ScheduleBooking, ScheduleRoom, UnavailableSlot } from '@/types/schedule'
 import type { DaySlot } from '@/utils/schedule'
-import { calculateSlotSpan, getScheduleSlotState, timeToSlotIndex } from '@/utils/schedule'
+import {
+  calculateSlotSpan,
+  calculateTimelineBookingPlacement,
+  getScheduleSlotState,
+  isBookingAlignedToSlots,
+  timeToSlotIndex,
+} from '@/utils/schedule'
 
 import ReservationBlock from './ReservationBlock.vue'
 import UnavailableSlotBlock from './UnavailableSlot.vue'
@@ -10,6 +16,7 @@ const props = defineProps<{
   room: ScheduleRoom
   slots: DaySlot[]
   slotMinutes: number
+  slotWidth: number
   focusWindow: { start: string; end: string }
   date: string
   bookings: ScheduleBooking[]
@@ -22,6 +29,19 @@ const emit = defineEmits<{
 
 function gridStyle(start: number, span = 1) {
   return { gridColumn: `${start + 1} / span ${span}` }
+}
+
+function bookingStyle(booking: ScheduleBooking) {
+  const placement = calculateTimelineBookingPlacement(
+    booking.startTime,
+    booking.endTime,
+    props.slotMinutes,
+  )
+  return {
+    gridColumn: placement.startSlotIndex + 1,
+    transform: `translateX(${(placement.offsetMinutes / props.slotMinutes) * props.slotWidth}px)`,
+    width: `${(placement.durationMinutes / props.slotMinutes) * props.slotWidth}px`,
+  }
 }
 
 function slotState(slot: DaySlot) {
@@ -63,8 +83,7 @@ function slotState(slot: DaySlot) {
             slotState(slot).isBookable ? `${room.name} ${slot.label} 创建预约` : undefined
           "
           @click="emit('selectEmptySlot', room, slot)"
-        >
-        </button>
+        ></button>
       </div>
       <div class="overlay-grid">
         <div
@@ -78,17 +97,17 @@ function slotState(slot: DaySlot) {
         <div
           v-for="booking in bookings"
           :key="booking.id"
-          class="timeline-overlay"
-          :style="
-            gridStyle(
-              timeToSlotIndex(booking.startTime, slotMinutes),
-              calculateSlotSpan(booking.startTime, booking.endTime, slotMinutes),
-            )
-          "
+          class="timeline-overlay booking-overlay"
+          :style="bookingStyle(booking)"
         >
           <ReservationBlock
             :booking="booking"
-            :slot-span="calculateSlotSpan(booking.startTime, booking.endTime, slotMinutes)"
+            :slot-span="
+              Math.max(1, calculateSlotSpan(booking.startTime, booking.endTime, slotMinutes))
+            "
+            :show-slot-dividers="
+              isBookingAlignedToSlots(booking.startTime, booking.endTime, slotMinutes)
+            "
             @select="emit('selectBooking', booking)"
           />
         </div>
@@ -164,5 +183,8 @@ function slotState(slot: DaySlot) {
   align-self: stretch;
   margin: 7px 0;
   pointer-events: auto;
+}
+.booking-overlay {
+  min-width: 1px;
 }
 </style>

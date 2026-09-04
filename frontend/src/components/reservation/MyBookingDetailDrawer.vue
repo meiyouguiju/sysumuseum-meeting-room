@@ -3,18 +3,24 @@ import { computed, ref, watch } from 'vue'
 import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
-import { cancelMyBooking, getBookingDetail, updateMyBooking } from '@/api/bookings'
+import {
+  cancelMyBooking,
+  getBookingDetail,
+  updateBookingSupplementalInfo,
+  updateMyBooking,
+} from '@/api/bookings'
 import { copyText, buildWeChatNotification } from '@/utils/wechatNotification'
 import ErrorState from '@/components/common/ErrorState.vue'
 import LoadingState from '@/components/common/LoadingState.vue'
 import ReservationForm from '@/components/reservation/ReservationForm.vue'
+import SupplementalInfoForm from '@/components/reservation/SupplementalInfoForm.vue'
 import { useDrawerHistory } from '@/composables/useDrawerHistory'
 import { useMobileBreakpoint } from '@/composables/useMobileBreakpoint'
 import { bookingDetailQueryKey } from '@/queries/bookings'
 import { roomsQueryOptions } from '@/queries/rooms'
 import { scheduleQueryKey } from '@/queries/schedule'
 import { ApiError } from '@/types/api'
-import type { BookingDetail, CreateBookingRequest } from '@/types/booking'
+import type { BookingDetail, CreateBookingRequest, SupplementalInfoRequest } from '@/types/booking'
 import { formatTimeRange } from '@/utils/schedule'
 import { displayOptionalDetailValue } from '@/utils/bookingDetail'
 
@@ -22,8 +28,10 @@ const props = defineProps<{ modelValue: boolean; bookingId?: number; editOnOpen?
 const emit = defineEmits<{ 'update:modelValue': [visible: boolean] }>()
 
 const isEditing = ref(false)
+const isSupplementing = ref(false)
 const isMutating = ref(false)
 const editSnapshot = ref<BookingDetail>()
+const supplementalSnapshot = ref<BookingDetail>()
 const { isMobile } = useMobileBreakpoint()
 const queryClient = useQueryClient()
 const roomsQuery = useQuery(roomsQueryOptions())
@@ -45,7 +53,7 @@ useDrawerHistory(drawerVisible)
 watch(
   () => props.modelValue,
   (visible) => {
-    if (!visible) clearEditSnapshot()
+    if (!visible) clearSnapshots()
   },
 )
 watch(booking, (value) => {
@@ -65,8 +73,16 @@ function clearEditSnapshot() {
   editSnapshot.value = undefined
   isEditing.value = false
 }
-function closeDrawer() {
+function clearSupplementalSnapshot() {
+  supplementalSnapshot.value = undefined
+  isSupplementing.value = false
+}
+function clearSnapshots() {
   clearEditSnapshot()
+  clearSupplementalSnapshot()
+}
+function closeDrawer() {
+  clearSnapshots()
   emit('update:modelValue', false)
 }
 function canEdit(value: BookingDetail) {
@@ -74,6 +90,9 @@ function canEdit(value: BookingDetail) {
 }
 function canCancel(value: BookingDetail) {
   return value.status === 'ACTIVE' && value.displayStatus !== 'ENDED'
+}
+function canSupplement(value: BookingDetail) {
+  return !canEdit(value)
 }
 function statusText(value: BookingDetail) {
   return value.status === 'CANCELLED'
@@ -84,6 +103,11 @@ function beginEdit() {
   if (!booking.value) return
   editSnapshot.value = cloneBooking(booking.value)
   isEditing.value = true
+}
+function beginSupplement() {
+  if (!booking.value) return
+  supplementalSnapshot.value = cloneBooking(booking.value)
+  isSupplementing.value = true
 }
 async function copyNotification(value: BookingDetail) {
   try {
@@ -144,6 +168,40 @@ async function saveEdit(request: CreateBookingRequest) {
     isMutating.value = false
   }
 }
+async function saveSupplementalInfo(request: Omit<SupplementalInfoRequest, 'version'>) {
+  if (!supplementalSnapshot.value) return
+  const original = supplementalSnapshot.value
+  isMutating.value = true
+  try {
+    await updateBookingSupplementalInfo(original.id, { ...request, version: original.version })
+    ElMessage.success('补充信息已保存')
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['my-bookings'] }),
+      queryClient.invalidateQueries({ queryKey: ['admin-bookings'] }),
+      queryClient.invalidateQueries({ queryKey: bookingDetailQueryKey(original.id) }),
+    ])
+    clearSupplementalSnapshot()
+  } catch (error) {
+    const apiError = error as ApiError
+    if (apiError.errorCode === 'BOOKING_VERSION_CONFLICT') {
+      clearSupplementalSnapshot()
+      await Promise.all([
+        detailQuery.refetch(),
+        queryClient.invalidateQueries({ queryKey: ['my-bookings'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin-bookings'] }),
+      ])
+      await ElMessageBox.alert(
+        '该预约已被其他操作修改，你本次修改未保存。请基于最新信息重新进入修改。',
+        '修改失败',
+        { confirmButtonText: '确定', type: 'warning' },
+      )
+    } else {
+      ElMessage.error(apiError.message ?? '保存失败，请稍后重试。')
+    }
+  } finally {
+    isMutating.value = false
+  }
+}
 async function cancelBooking() {
   if (!booking.value) return
   const value = booking.value
@@ -175,7 +233,7 @@ async function cancelBooking() {
 <template>
   <el-drawer
     v-model="drawerVisible"
-    :title="isEditing ? '修改预约' : '预约详情'"
+    :title="isEditing ? '修改预约' : isSupplementing ? '补充预约信息' : '预约详情'"
     :size="isMobile ? '100%' : '440px'"
   >
     <LoadingState v-if="detailQuery.isPending.value" />
@@ -195,6 +253,13 @@ async function cancelBooking() {
       :submitting="isMutating"
       @cancel="clearEditSnapshot"
       @submit="saveEdit"
+    />
+    <SupplementalInfoForm
+      v-else-if="supplementalSnapshot && isSupplementing"
+      :booking="supplementalSnapshot"
+      :submitting="isMutating"
+      @cancel="clearSupplementalSnapshot"
+      @submit="saveSupplementalInfo"
     />
     <template v-else-if="booking">
       <el-descriptions :column="1" border>
@@ -225,6 +290,9 @@ async function cancelBooking() {
       <div class="actions">
         <el-button @click="copyNotification(booking)">复制微信群通知</el-button>
         <el-button v-if="canEdit(booking)" type="primary" @click="beginEdit">修改预约</el-button>
+        <el-button v-if="canSupplement(booking)" type="primary" @click="beginSupplement"
+          >保存补充信息</el-button
+        >
         <el-button
           v-if="canCancel(booking)"
           type="danger"

@@ -7,13 +7,16 @@ import { formatTimeRange, scheduleBookingStatusText } from '@/utils/schedule'
 const props = defineProps<{
   booking: ScheduleBooking
   slotSpan: number
+  showSlotDividers: boolean
 }>()
 defineEmits<{ select: [booking: ScheduleBooking] }>()
 
 const statusText = computed(() => scheduleBookingStatusText(props.booking.displayStatus))
 const timeRange = computed(() => formatTimeRange(props.booking.startTime, props.booking.endTime))
 const dividerIndexes = computed(() =>
-  Array.from({ length: Math.max(0, props.slotSpan - 1) }, (_, index) => index + 1),
+  props.showSlotDividers
+    ? Array.from({ length: Math.max(0, props.slotSpan - 1) }, (_, index) => index + 1)
+    : [],
 )
 </script>
 

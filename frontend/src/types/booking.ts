@@ -74,6 +74,14 @@ export interface MyBookingsParams {
 export interface UpdateBookingRequest extends CreateBookingRequest {
   version: number
 }
+
+export interface SupplementalInfoRequest {
+  version: number
+  attendeeCount?: number | null
+  participantsText?: string | null
+  description?: string | null
+}
+
 export interface CancelBookingRequest {
   version: number
   reason?: string | null

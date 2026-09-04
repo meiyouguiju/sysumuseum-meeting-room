@@ -127,6 +127,7 @@ onBeforeUnmount(stopCurrentTimeTimer)
         :room="room"
         :slots="slots"
         :slot-minutes="schedule.slotMinutes"
+        :slot-width="SLOT_WIDTH"
         :date="schedule.date"
         :focus-window="schedule.focusWindow"
         :bookings="bookingsByRoomId.get(room.id) ?? []"

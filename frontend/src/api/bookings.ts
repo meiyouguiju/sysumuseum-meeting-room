@@ -8,6 +8,7 @@ import type {
   IdempotencyResultResponse,
   MyBookingsPageResponse,
   MyBookingsParams,
+  SupplementalInfoRequest,
   UpdateBookingRequest,
 } from '@/types/booking'
 
@@ -56,6 +57,13 @@ export async function updateMyBooking(
   request: UpdateBookingRequest,
 ): Promise<BookingDetail> {
   return (await http.patch<BookingDetail>(`/bookings/${bookingId}`, request)).data
+}
+
+export async function updateBookingSupplementalInfo(
+  bookingId: number,
+  request: SupplementalInfoRequest,
+): Promise<BookingDetail> {
+  return (await http.patch<BookingDetail>(`/bookings/${bookingId}/supplemental-info`, request)).data
 }
 export async function cancelMyBooking(
   bookingId: number,

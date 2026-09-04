@@ -21,6 +21,12 @@ export interface ScheduleBookingLike {
   endTime: string
 }
 
+export interface TimelineBookingPlacement {
+  startSlotIndex: number
+  offsetMinutes: number
+  durationMinutes: number
+}
+
 const MINUTES_PER_DAY = 24 * 60
 
 export function buildDaySlots(slotMinutes: number): DaySlot[] {
@@ -57,6 +63,31 @@ export function timeToSlotIndex(dateTime: string, slotMinutes: number): number {
 
 export function calculateSlotSpan(startTime: string, endTime: string, slotMinutes: number): number {
   return Math.max(0, Math.floor((timeToMinutes(endTime) - timeToMinutes(startTime)) / slotMinutes))
+}
+
+export function calculateTimelineBookingPlacement(
+  startTime: string,
+  endTime: string,
+  slotMinutes: number,
+): TimelineBookingPlacement {
+  const startMinutes = timeToMinutes(startTime)
+  const endMinutes = timeToMinutes(endTime)
+
+  return {
+    startSlotIndex: Math.floor(startMinutes / slotMinutes),
+    offsetMinutes: startMinutes % slotMinutes,
+    durationMinutes: Math.max(0, endMinutes - startMinutes),
+  }
+}
+
+export function isBookingAlignedToSlots(
+  startTime: string,
+  endTime: string,
+  slotMinutes: number,
+): boolean {
+  const placement = calculateTimelineBookingPlacement(startTime, endTime, slotMinutes)
+
+  return placement.offsetMinutes === 0 && placement.durationMinutes % slotMinutes === 0
 }
 
 export function formatTimeRange(startTime: string, endTime: string): string {
@@ -131,11 +162,9 @@ export function isCreatableScheduleSlot(input: {
     )
   )
     return false
-  return !input.bookings.some((booking) => {
-    const start = timeToSlotIndex(booking.startTime, input.slotMinutes)
-    const end = start + calculateSlotSpan(booking.startTime, booking.endTime, input.slotMinutes)
-    return input.slot.index >= start && input.slot.index < end
-  })
+  return !input.bookings.some((booking) =>
+    bookingOverlapsSlot(booking, input.slot, input.slotMinutes),
+  )
 }
 
 export function getScheduleSlotState(input: {
@@ -149,11 +178,9 @@ export function getScheduleSlotState(input: {
   unavailableSlots: Array<{ slotStart: string }>
 }): ScheduleSlotState {
   const timePosition = getScheduleSlotTimePosition(input.date, input.slot, input.slotMinutes)
-  const hasBooking = input.bookings.some((booking) => {
-    const start = timeToSlotIndex(booking.startTime, input.slotMinutes)
-    const end = start + calculateSlotSpan(booking.startTime, booking.endTime, input.slotMinutes)
-    return input.slot.index >= start && input.slot.index < end
-  })
+  const hasBooking = input.bookings.some((booking) =>
+    bookingOverlapsSlot(booking, input.slot, input.slotMinutes),
+  )
   const hasCurrentSlotHold = input.unavailableSlots.some(
     (slot) => timeToSlotIndex(slot.slotStart, input.slotMinutes) === input.slot.index,
   )
@@ -171,6 +198,15 @@ export function getScheduleSlotState(input: {
     isInFocusWindow: isInFocusWindow(input.slot, input.focusWindow.start, input.focusWindow.end),
     isBookable,
   }
+}
+
+function bookingOverlapsSlot(
+  booking: ScheduleBookingLike,
+  slot: DaySlot,
+  slotMinutes: number,
+): boolean {
+  const slotEnd = slot.minutes + slotMinutes
+  return timeToMinutes(booking.startTime) < slotEnd && timeToMinutes(booking.endTime) > slot.minutes
 }
 
 function getScheduleSlotTimePosition(

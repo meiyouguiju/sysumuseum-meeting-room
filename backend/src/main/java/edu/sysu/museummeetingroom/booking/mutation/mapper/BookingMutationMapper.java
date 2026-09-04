@@ -1,6 +1,7 @@
 package edu.sysu.museummeetingroom.booking.mutation.mapper;
 
 import edu.sysu.museummeetingroom.booking.command.UpdateBookingCommand;
+import edu.sysu.museummeetingroom.booking.command.SupplementalInfoCommand;
 import java.time.LocalDateTime;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -47,6 +48,21 @@ public interface BookingMutationMapper {
             @Param("bookingId") long bookingId,
             @Param("version") int version,
             @Param("command") edu.sysu.museummeetingroom.admin.booking.command.AdminUpdateBookingCommand command,
+            @Param("actorUserId") long actorUserId,
+            @Param("occurredAt") LocalDateTime occurredAt);
+
+    @Update("""
+            UPDATE booking
+            SET attendee_count = #{command.attendeeCount}, participants_text = #{command.participantsText},
+                description = #{command.description}, version = version + 1,
+                last_modified_at = #{occurredAt}, last_modified_by_user_id = #{actorUserId},
+                updated_at = #{occurredAt}
+            WHERE id = #{bookingId} AND version = #{version}
+            """)
+    int updateSupplementalInfoWithVersion(
+            @Param("bookingId") long bookingId,
+            @Param("version") int version,
+            @Param("command") SupplementalInfoCommand command,
             @Param("actorUserId") long actorUserId,
             @Param("occurredAt") LocalDateTime occurredAt);
 }
