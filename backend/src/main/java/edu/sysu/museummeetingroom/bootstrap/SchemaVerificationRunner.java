@@ -9,7 +9,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile("!pin-maintenance & !user-bootstrap")
+@Profile("!pin-maintenance & !user-bootstrap & !legacy-import")
 @RequiredArgsConstructor
 public class SchemaVerificationRunner implements ApplicationRunner {
 

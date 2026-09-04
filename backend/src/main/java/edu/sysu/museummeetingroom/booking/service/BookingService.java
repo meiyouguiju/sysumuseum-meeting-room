@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.sysu.museummeetingroom.auth.CurrentUser;
 import edu.sysu.museummeetingroom.auth.CurrentUserProvider;
+import edu.sysu.museummeetingroom.booking.audit.BookingCreateAuditSnapshot;
 import edu.sysu.museummeetingroom.booking.command.CreateBookingCommand;
 import edu.sysu.museummeetingroom.booking.dto.CreateBookingResult;
 import edu.sysu.museummeetingroom.booking.mapper.BookingAuditLogEntity;
@@ -108,7 +109,21 @@ public class BookingService {
             CurrentUser currentUser,
             List<BookingSlotEntity> slots,
             LocalDateTime now) {
-        BookingAuditSnapshot snapshot = BookingAuditSnapshot.from(booking);
+        BookingCreateAuditSnapshot snapshot = new BookingCreateAuditSnapshot(
+                booking.getId(),
+                booking.getBookingNo(),
+                booking.getRoomId(),
+                booking.getOrganizerUserId(),
+                booking.getOrganizerNameSnapshot(),
+                booking.getSubject(),
+                booking.getAttendeeCount(),
+                booking.getParticipantsText(),
+                booking.getDescription(),
+                booking.getStartTime(),
+                booking.getEndTime(),
+                "ACTIVE",
+                1,
+                booking.getOccurredAt());
         BookingAuditLogEntity auditLog = new BookingAuditLogEntity(
                 booking.getId(),
                 currentUser.userId(),
@@ -150,38 +165,4 @@ public class BookingService {
                 warnings);
     }
 
-    private record BookingAuditSnapshot(
-            Long id,
-            String bookingNo,
-            Long roomId,
-            Long organizerUserId,
-            String organizerNameSnapshot,
-            String subject,
-            Integer attendeeCount,
-            String participantsText,
-            String description,
-            LocalDateTime startTime,
-            LocalDateTime endTime,
-            String status,
-            Integer version,
-            LocalDateTime createdAt) {
-
-        private static BookingAuditSnapshot from(BookingEntity booking) {
-            return new BookingAuditSnapshot(
-                    booking.getId(),
-                    booking.getBookingNo(),
-                    booking.getRoomId(),
-                    booking.getOrganizerUserId(),
-                    booking.getOrganizerNameSnapshot(),
-                    booking.getSubject(),
-                    booking.getAttendeeCount(),
-                    booking.getParticipantsText(),
-                    booking.getDescription(),
-                    booking.getStartTime(),
-                    booking.getEndTime(),
-                    "ACTIVE",
-                    1,
-                    booking.getOccurredAt());
-        }
-    }
 }
