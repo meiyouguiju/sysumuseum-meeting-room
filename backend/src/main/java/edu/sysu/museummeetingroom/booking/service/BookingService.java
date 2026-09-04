@@ -51,6 +51,7 @@ public class BookingService {
 
         BookingEntity booking = createBookingEntity(command, currentUser, now);
         bookingMapper.insert(booking);
+        assignFinalBookingNo(booking, now);
 
         List<BookingSlotEntity> slots = bookingSlotGenerator.generate(
                 booking.getId(), command.roomId(), command.startTime(), command.endTime());
@@ -94,6 +95,18 @@ public class BookingService {
         booking.setLastModifiedByUserId(currentUser.userId());
         booking.setOccurredAt(now);
         return booking;
+    }
+
+    private void assignFinalBookingNo(BookingEntity booking, LocalDateTime now) {
+        if (booking.getId() == null) {
+            throw new IllegalStateException("新建预约后未获得数据库主键。");
+        }
+
+        String bookingNo = "BOOK-%04d-%06d".formatted(now.getYear(), booking.getId());
+        if (bookingMapper.updateBookingNoById(booking.getId(), bookingNo, now) != 1) {
+            throw new IllegalStateException("新建预约号写入失败。");
+        }
+        booking.setBookingNo(bookingNo);
     }
 
     private void insertSlots(List<BookingSlotEntity> slots) {

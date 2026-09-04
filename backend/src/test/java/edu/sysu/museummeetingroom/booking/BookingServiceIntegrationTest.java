@@ -71,8 +71,11 @@ class BookingServiceIntegrationTest {
         assertThat(result.subject()).isEqualTo("正常预约");
         assertThat(result.version()).isEqualTo(1);
         assertThat(result.warnings()).isEmpty();
+        assertThat(result.bookingNo()).isEqualTo(expectedBookingNo(result.id()));
         assertThat(jdbcTemplate.queryForObject("SELECT subject FROM booking WHERE id = ?", String.class, result.id()))
                 .isEqualTo("正常预约");
+        assertThat(jdbcTemplate.queryForObject("SELECT booking_no FROM booking WHERE id = ?", String.class, result.id()))
+                .isEqualTo(expectedBookingNo(result.id()));
         assertThat(jdbcTemplate.queryForObject("SELECT organizer_user_id FROM booking WHERE id = ?", Long.class, result.id()))
                 .isEqualTo(940001L);
         assertThat(jdbcTemplate.queryForList("SELECT slot_start FROM booking_slot WHERE booking_id = ? ORDER BY slot_start", result.id()))
@@ -94,10 +97,22 @@ class BookingServiceIntegrationTest {
                 .isEqualTo(1);
         assertThat(jdbcTemplate.queryForObject("SELECT after_json->>'$.participantsText' FROM booking_audit_log WHERE booking_id = ?", String.class, result.id()))
                 .isEqualTo("参会人员");
+        assertThat(jdbcTemplate.queryForObject("SELECT after_json->>'$.bookingNo' FROM booking_audit_log WHERE booking_id = ?", String.class, result.id()))
+                .isEqualTo(expectedBookingNo(result.id()));
         assertThat(jdbcTemplate.queryForObject("SELECT JSON_LENGTH(slot_change_json) FROM booking_audit_log WHERE booking_id = ?", Integer.class, result.id()))
                 .isEqualTo(3);
         assertThat(jdbcTemplate.queryForObject("SELECT occurred_at FROM booking_audit_log WHERE booking_id = ?", LocalDateTime.class, result.id()))
                 .isEqualTo(NOW);
+    }
+
+    @Test
+    void assignsDifferentReadableBookingNumbersFromGeneratedIds() {
+        CreateBookingResult first = bookingService.create(command("编号一", at(11, 0), at(11, 30), 1));
+        CreateBookingResult second = bookingService.create(command("编号二", at(12, 0), at(12, 30), 1));
+
+        assertThat(first.bookingNo()).isEqualTo(expectedBookingNo(first.id()));
+        assertThat(second.bookingNo()).isEqualTo(expectedBookingNo(second.id()));
+        assertThat(first.bookingNo()).isNotEqualTo(second.bookingNo());
     }
 
     @Test
@@ -175,6 +190,10 @@ class BookingServiceIntegrationTest {
 
     private CreateBookingCommand command(String subject, LocalDateTime startTime, LocalDateTime endTime, Integer attendeeCount) {
         return new CreateBookingCommand(ENABLED_ROOM_ID, subject, startTime, endTime, attendeeCount, "参会人员", "会议说明");
+    }
+
+    private String expectedBookingNo(long bookingId) {
+        return "BOOK-2026-%06d".formatted(bookingId);
     }
 
     private CreateBookingCommand commandWithRoom(long roomId, LocalDateTime startTime, LocalDateTime endTime) {

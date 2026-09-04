@@ -85,12 +85,21 @@ class BookingHttpIntegrationTest {
                 .andExpect(header().string("X-Request-Id", "request-two"))
                 .andReturn();
 
-        assertThat(json(first).get("id")).isEqualTo(json(replay).get("id"));
-        assertThat(json(first).get("bookingNo")).isEqualTo(json(replay).get("bookingNo"));
-        assertThat(json(first).get("createdAt")).isEqualTo(json(replay).get("createdAt"));
+        JsonNode firstBody = json(first);
+        JsonNode replayBody = json(replay);
+        long bookingId = firstBody.get("id").asLong();
+        String bookingNo = "BOOK-2026-%06d".formatted(bookingId);
+
+        assertThat(firstBody.get("id")).isEqualTo(replayBody.get("id"));
+        assertThat(firstBody.get("bookingNo")).isEqualTo(replayBody.get("bookingNo"));
+        assertThat(firstBody.get("createdAt")).isEqualTo(replayBody.get("createdAt"));
+        assertThat(firstBody.get("bookingNo").asText()).isEqualTo(bookingNo);
         assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM booking WHERE room_id = ?", Integer.class, ROOM_ID)).isEqualTo(1);
         assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM booking_slot WHERE room_id = ?", Integer.class, ROOM_ID)).isEqualTo(2);
-        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM booking_audit_log", Integer.class)).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject("SELECT after_json->>'$.bookingNo' FROM booking_audit_log WHERE booking_id = ?", String.class, bookingId))
+                .isEqualTo(bookingNo);
+        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM booking_audit_log WHERE booking_id = ?", Integer.class, bookingId))
+                .isEqualTo(1);
         assertThat(jdbcTemplate.queryForObject("SELECT response_body LIKE '%requestId%' FROM idempotency_record WHERE idempotency_key = 'http-success'", Boolean.class)).isFalse();
     }
 

@@ -1,8 +1,11 @@
 package edu.sysu.museummeetingroom.booking.mapper;
 
+import java.time.LocalDateTime;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Options;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Update;
 
 @Mapper
 public interface BookingMapper {
@@ -20,4 +23,15 @@ public interface BookingMapper {
             """)
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(BookingEntity booking);
+
+    @Update("""
+            UPDATE booking
+            SET booking_no = #{bookingNo},
+                updated_at = #{occurredAt}
+            WHERE id = #{bookingId}
+            """)
+    int updateBookingNoById(
+            @Param("bookingId") Long bookingId,
+            @Param("bookingNo") String bookingNo,
+            @Param("occurredAt") LocalDateTime occurredAt);
 }
