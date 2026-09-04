@@ -174,6 +174,9 @@ h1 {
   display: none;
 }
 @media (max-width: 760px) {
+  h1 {
+    font-size: 20px;
+  }
   .desktop-room-table {
     display: none;
   }

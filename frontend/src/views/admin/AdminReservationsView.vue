@@ -504,6 +504,9 @@ h1 {
   width: 160px;
 }
 @media (max-width: 760px) {
+  h1 {
+    font-size: 20px;
+  }
   .desktop-admin-table {
     display: none;
   }

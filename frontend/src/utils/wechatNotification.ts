@@ -1,7 +1,7 @@
 import type { BookingDetail, CreateBookingResponse } from '@/types/booking'
 
 const WEEKDAYS = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
-const TENCENT_DOC_URL = 'https://docs.qq.com/sheet/DZXRZT1Vmd0dyS1hy'
+const ROOM_BOOK_SYSTEM_URL = 'https://meeting.sysumuseum.cn/'
 
 type NotificationBooking = Pick<
   CreateBookingResponse | BookingDetail,
@@ -25,7 +25,7 @@ function timeOf(value: string): string {
 
 export function buildWeChatNotification(booking: NotificationBooking): string {
   const { date, weekday } = formatDateAndWeekday(booking.startTime)
-  return `各位同事，我申请预约${booking.room.name}，时间是${date}（${weekday}）${timeOf(booking.startTime)}-${timeOf(booking.endTime)}，已同步更新【腾讯文档】博物馆（校史馆）会议室预约登记。${TENCENT_DOC_URL}。`
+  return `各位同事，我申请预约${booking.room.name}，时间是${date}（${weekday}）${timeOf(booking.startTime)}-${timeOf(booking.endTime)}，已同步更新【博物馆（校史馆）会议室预约系统】。${ROOM_BOOK_SYSTEM_URL}。`
 }
 
 export async function copyText(text: string): Promise<void> {
