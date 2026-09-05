@@ -58,6 +58,10 @@ a {
   align-items: center;
   gap: 8px;
 }
+.user-menu {
+  color: white;
+  cursor: pointer;
+}
 .header-error {
   margin: 12px 32px 0;
 }

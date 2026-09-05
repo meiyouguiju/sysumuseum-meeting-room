@@ -3,6 +3,7 @@ package edu.sysu.museummeetingroom.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -73,6 +74,10 @@ class SessionAuthenticationHttpIntegrationTest {
     @Test
     void lanLoginCreatesPersistentCookieAndLogoutInvalidatesIt() throws Exception {
         mockMvc.perform(get("/api/v1/me")).andExpect(status().isUnauthorized());
+        mockMvc.perform(patch("/api/v1/me/pin")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"currentPin\":\"0376\",\"newPin\":\"1111\"}"))
+                .andExpect(status().isUnauthorized());
         int sessionsBeforeLogin = sessionCount();
 
         jakarta.servlet.http.Cookie sessionCookie = login("前导零用户", "0376", false);
@@ -121,6 +126,67 @@ class SessionAuthenticationHttpIntegrationTest {
                 .andExpect(status().isNoContent());
     }
 
+    @Test
+    void userCanChangePinAndMustLogInAgainWithTheNewPin() throws Exception {
+        jakarta.servlet.http.Cookie sessionCookie = login("张伟", "1357", false);
+        String otherUserHash = pinHash(SECOND_USER_ID);
+
+        MvcResult result = changePin(sessionCookie, "1357", "2468")
+                .andExpect(status().isNoContent())
+                .andReturn();
+
+        jakarta.servlet.http.Cookie clearedCookie = result.getResponse().getCookie("MUSEUM_SESSION");
+        assertThat(clearedCookie).isNotNull();
+        assertThat(clearedCookie.getMaxAge()).isZero();
+        assertThat(passwordEncoder.matches("2468", pinHash(FIRST_USER_ID))).isTrue();
+        assertThat(passwordEncoder.matches("1357", pinHash(FIRST_USER_ID))).isFalse();
+        assertThat(pinHash(SECOND_USER_ID)).isEqualTo(otherUserHash);
+        mockMvc.perform(get("/api/v1/me").cookie(sessionCookie)).andExpect(status().isUnauthorized());
+        loginExpectingUnauthorized("张伟", "1357");
+
+        jakarta.servlet.http.Cookie newSessionCookie = login("张伟", "2468", false);
+        mockMvc.perform(get("/api/v1/me").cookie(newSessionCookie))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(FIRST_USER_ID));
+    }
+
+    @Test
+    void rejectedPinChangesKeepTheCurrentSessionAndDatabaseState() throws Exception {
+        jakarta.servlet.http.Cookie sessionCookie = login("张伟", "1357", false);
+        String originalHash = pinHash(FIRST_USER_ID);
+
+        changePin(sessionCookie, "9999", "2468")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("CURRENT_PIN_INCORRECT"));
+        changePin(sessionCookie, "1357", "1357")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("PIN_UNCHANGED"));
+        changePin(sessionCookie, "1357", "4826")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("PIN_CONFLICT"));
+        changePin(sessionCookie, "1357", "123")
+                .andExpect(status().isBadRequest());
+
+        assertThat(pinHash(FIRST_USER_ID)).isEqualTo(originalHash);
+        mockMvc.perform(get("/api/v1/me").cookie(sessionCookie))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(FIRST_USER_ID));
+    }
+
+    @Test
+    void adminCanChangeOwnPin() throws Exception {
+        jakarta.servlet.http.Cookie sessionCookie = login("前导零用户", "0376", false);
+
+        changePin(sessionCookie, "0376", "1111").andExpect(status().isNoContent());
+
+        loginExpectingUnauthorized("前导零用户", "0376");
+        jakarta.servlet.http.Cookie newSessionCookie = login("前导零用户", "1111", false);
+        mockMvc.perform(get("/api/v1/me").cookie(newSessionCookie))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(LEADING_ZERO_USER_ID))
+                .andExpect(jsonPath("$.roleCode").value("ADMIN"));
+    }
+
     private jakarta.servlet.http.Cookie login(String name, String pin, boolean forwardedHttps) throws Exception {
         var request = post("/api/v1/auth/login")
                 .contentType(APPLICATION_JSON)
@@ -134,6 +200,27 @@ class SessionAuthenticationHttpIntegrationTest {
         jakarta.servlet.http.Cookie sessionCookie = result.getResponse().getCookie("MUSEUM_SESSION");
         assertThat(sessionCookie).isNotNull();
         return sessionCookie;
+    }
+
+    private org.springframework.test.web.servlet.ResultActions changePin(
+            jakarta.servlet.http.Cookie sessionCookie,
+            String currentPin,
+            String newPin) throws Exception {
+        return mockMvc.perform(patch("/api/v1/me/pin")
+                .cookie(sessionCookie)
+                .contentType(APPLICATION_JSON)
+                .content("{\"currentPin\":\"" + currentPin + "\",\"newPin\":\"" + newPin + "\"}"));
+    }
+
+    private void loginExpectingUnauthorized(String name, String pin) throws Exception {
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"name\":\"" + name + "\",\"pin\":\"" + pin + "\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    private String pinHash(long userId) {
+        return jdbcTemplate.queryForObject("SELECT pin_hash FROM sys_user WHERE id = ?", String.class, userId);
     }
 
     private int sessionCount() {

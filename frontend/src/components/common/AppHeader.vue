@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import { ElMessage } from 'element-plus'
 
 import { logout } from '@/api/auth'
+import ChangePinDialog from '@/components/common/ChangePinDialog.vue'
 import ErrorState from '@/components/common/ErrorState.vue'
 import { currentUserQueryOptions } from '@/queries/currentUser'
 
@@ -14,6 +15,7 @@ const isAdmin = computed(() => currentUserQuery.data.value?.roleCode === 'ADMIN'
 const route = useRoute()
 const router = useRouter()
 const isAdminRoute = computed(() => route.path.startsWith('/admin/'))
+const isChangePinDialogVisible = ref(false)
 
 async function signOut() {
   try {
@@ -23,6 +25,19 @@ async function signOut() {
     queryClient.removeQueries({ queryKey: ['current-user'] })
     await router.replace('/login')
   }
+}
+
+async function handleUserMenu(command: string) {
+  if (command === 'change-pin') {
+    isChangePinDialogVisible.value = true
+    return
+  }
+  await signOut()
+}
+
+async function handlePinChanged() {
+  queryClient.removeQueries({ queryKey: ['current-user'] })
+  await router.replace('/login')
 }
 </script>
 
@@ -46,11 +61,19 @@ async function signOut() {
         </template>
       </el-dropdown>
     </nav>
-    <div v-if="currentUserQuery.data.value" class="user-summary">
-      <span>{{ currentUserQuery.data.value.displayName }}</span>
-      <el-tag v-if="isAdmin" size="small" type="danger">管理员</el-tag>
-      <el-button link type="primary" @click="signOut">退出登录</el-button>
-    </div>
+    <el-dropdown v-if="currentUserQuery.data.value" trigger="click" @command="handleUserMenu">
+      <span class="user-summary user-menu">
+        <span>{{ currentUserQuery.data.value.displayName }}</span>
+        <el-tag v-if="isAdmin" size="small" type="danger">管理员</el-tag>
+        <span aria-hidden="true">▼</span>
+      </span>
+      <template #dropdown>
+        <el-dropdown-menu>
+          <el-dropdown-item command="change-pin">修改密码</el-dropdown-item>
+          <el-dropdown-item command="logout">退出登录</el-dropdown-item>
+        </el-dropdown-menu>
+      </template>
+    </el-dropdown>
     <span v-else-if="currentUserQuery.isPending.value">身份加载中...</span>
   </header>
   <ErrorState
@@ -60,4 +83,5 @@ async function signOut() {
     :error="currentUserQuery.error.value"
     @retry="currentUserQuery.refetch()"
   />
+  <ChangePinDialog v-model="isChangePinDialogVisible" @changed="handlePinChanged" />
 </template>

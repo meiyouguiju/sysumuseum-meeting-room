@@ -32,11 +32,14 @@ class AuthServiceTest {
     @Mock
     private SecurityContextRepository securityContextRepository;
 
+    @Mock
+    private CurrentUserProvider currentUserProvider;
+
     private AuthService authService;
 
     @BeforeEach
     void setUp() {
-        authService = new AuthService(sysUserMapper, passwordEncoder, securityContextRepository);
+        authService = new AuthService(sysUserMapper, passwordEncoder, securityContextRepository, currentUserProvider);
     }
 
     @Test

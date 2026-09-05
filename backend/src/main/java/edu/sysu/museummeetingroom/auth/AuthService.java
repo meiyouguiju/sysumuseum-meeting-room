@@ -19,6 +19,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Profile("!local")
@@ -30,6 +31,7 @@ public class AuthService {
     private final SysUserMapper sysUserMapper;
     private final PasswordEncoder passwordEncoder;
     private final SecurityContextRepository securityContextRepository;
+    private final CurrentUserProvider currentUserProvider;
 
     public CurrentUserResponse login(LoginRequest request, HttpServletRequest servletRequest, HttpServletResponse servletResponse) {
         String displayName = request.name().trim();
@@ -69,5 +71,38 @@ public class AuthService {
         sessionCookie.setSecure(request.isSecure());
         sessionCookie.setAttribute("SameSite", "Lax");
         response.addCookie(sessionCookie);
+    }
+
+    @Transactional
+    public void changeOwnPin(ChangePinRequest request) {
+        CurrentUser currentUser = currentUserProvider.currentUser();
+        List<UserRow> sameNameUsers = sysUserMapper.findActiveByDisplayNameForUpdate(currentUser.displayName());
+        UserRow user = sameNameUsers.stream()
+                .filter(candidate -> currentUser.userId().equals(candidate.id()))
+                .findFirst()
+                .orElse(null);
+        if (user == null) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHENTICATED", "当前用户不可用。");
+        }
+        if (!passwordEncoder.matches(request.currentPin(), user.pinHash())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "CURRENT_PIN_INCORRECT", "当前 PIN 不正确。");
+        }
+        if (passwordEncoder.matches(request.newPin(), user.pinHash())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "PIN_UNCHANGED", "新 PIN 不能与当前 PIN 相同。");
+        }
+        if (hasSameNamePinConflict(sameNameUsers, user, request.newPin())) {
+            throw new ApiException(HttpStatus.CONFLICT, "PIN_CONFLICT", "同名用户已使用该 PIN，请选择其他 PIN。");
+        }
+
+        String pinHash = passwordEncoder.encode(request.newPin());
+        if (sysUserMapper.updateActivePin(user.id(), pinHash) != 1) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHENTICATED", "当前用户不可用。");
+        }
+    }
+
+    private boolean hasSameNamePinConflict(List<UserRow> sameNameUsers, UserRow currentUser, String newPin) {
+        return sameNameUsers.stream()
+                .filter(candidate -> !candidate.id().equals(currentUser.id()))
+                .anyMatch(candidate -> passwordEncoder.matches(newPin, candidate.pinHash()));
     }
 }
